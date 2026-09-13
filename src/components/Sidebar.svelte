@@ -1110,6 +1110,7 @@
     border-radius: 6px;
     padding: 0 8px;
     background: transparent;
+    color: var(--toc-text);
     font-size: var(--category-child-font-size, 14px);
     text-align: left;
     cursor: pointer;

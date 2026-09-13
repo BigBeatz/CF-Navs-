@@ -68,4 +68,21 @@
   .custom-accent-fields {
     margin-top: 10px;
   }
+
+  .field-color {
+    grid-column: span 6;
+    min-width: 0;
+  }
+
+  @media (max-width: 960px) {
+    .field-color {
+      grid-column: 1 / -1;
+    }
+  }
+
+  @container settings-editor (max-width: 620px) {
+    .field-color {
+      grid-column: 1 / -1;
+    }
+  }
 </style>

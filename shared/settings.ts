@@ -31,7 +31,7 @@ export function normalizeCategoryDisplaySetting(value: unknown): CategoryDisplay
  }
 }
 export const CARD_SIZE_DEFAULTS: CardSizeSetting = {
- width: 80,
+ width: 160,
  height: 60,
 }
 

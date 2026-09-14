@@ -83,8 +83,6 @@
   </tr>
 </table>
 
-首页预览以对角线对比两种外观：左下为护眼主题，右上为毛玻璃主题。
-
 <p align="center">
   <strong>主题与站点设置</strong><br>
   <img src="docs/screenshots/cf-navs-admin-setting.webp" alt="CF-Navs 主题与站点设置">
@@ -129,6 +127,9 @@ CF-Navs 需要以下 Cloudflare 资源：
    - 如果列表中已经有 Cloudflare 自动生成的 `SETUP_TOKEN`，请编辑它并替换为你自己保存的值，然后在 **设置 → 构建** 中执行一次**清理缓存**。
    - 如果已有的是普通文本变量而不是密钥，请删除它，再重新添加类型为**密钥**的 `SETUP_TOKEN`。不要同时保留同名的普通变量和 Secret。
    - 如果列表中没有 `SETUP_TOKEN`，请手动添加类型为**密钥**的变量。值使用足够长的随机字符串，不要添加为普通文本变量。
+
+   <img src="docs/screenshots/cf-deploy3.jpg" alt="Cloudflare 控制台变量和密钥设置示意">
+
 6. 保存 Secret 后重新部署同一个 `main` 生产部署：可以在 **Deployments** 页面对最近一次生产部署执行 **Retry/Redeploy**，也可以向 `main` 推送一个新提交。不要只保存 Secret 后直接访问 `/install`，必须先让新的部署读取到 Secret。
 7. 打开部署后的 Workers URL，并访问 `/install`。输入当前生产环境中配置的 `SETUP_TOKEN` 值，再创建管理员用户名和密码。确认安装和登录成功后，删除或轮换这个令牌；无论它原来是 Cloudflare 自动生成的还是你手动添加的，已完成安装的站点都不再需要它。
 

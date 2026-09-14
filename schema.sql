@@ -68,7 +68,7 @@ INSERT OR IGNORE INTO settings (key, value) VALUES
   ('site_title_show', 'true'),
   ('most_visited_count', '8'),
   ('search_engine', '{"current":"Google","engines":[{"name":"Google","icon":"","url_template":"https://www.google.com/search?q={q}"},{"name":"Bing","icon":"","url_template":"https://www.bing.com/search?q={q}"}]}'),
-  ('card_size', '{"width":80,"height":60}'),
+  ('card_size', '{"width":160,"height":60}'),
   ('card_style', '"info"'),
   ('card_icon_size', '60'),
   ('category_display', '{"root_font_size":16,"root_icon_size":20,"child_font_size":14,"child_icon_size":18}'),

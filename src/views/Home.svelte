@@ -27,7 +27,7 @@
     resolveHomeActiveSectionId,
     resolveHomeCategorySelection,
   } from '../lib/homeData'
-  import { CATEGORY_DISPLAY_DEFAULTS } from '../../shared/settings'
+  import { CARD_SIZE_DEFAULTS, CATEGORY_DISPLAY_DEFAULTS } from '../../shared/settings'
   import { buildCategoryTreeOptions } from '../lib/categorySelect'
   import { getErrorMessage } from '../lib/api'
   import { reorderByIds } from '../lib/reorder'
@@ -476,7 +476,7 @@
                       showCategoryIcon={false}
                       showEmpty={false}
                       canAddBookmark={isAuthenticated}
-                      cardWidth={settings?.card_size?.width ?? 80}
+                      cardWidth={settings?.card_size?.width ?? CARD_SIZE_DEFAULTS.width}
                       cardHeight={settings?.card_size?.height ?? 60}
                       cardStyle={settings?.card_style ?? 'info'}
                       cardIconSize={settings?.card_icon_size ?? 60}
@@ -496,7 +496,7 @@
                       level={2}
                       showEmpty={false}
                       canAddBookmark={isAuthenticated}
-                      cardWidth={settings?.card_size?.width ?? 80}
+                      cardWidth={settings?.card_size?.width ?? CARD_SIZE_DEFAULTS.width}
                       cardHeight={settings?.card_size?.height ?? 60}
                       cardStyle={settings?.card_style ?? 'info'}
                       cardIconSize={settings?.card_icon_size ?? 60}
@@ -521,7 +521,7 @@
             category={MOST_VISITED_CATEGORY}
             bookmarks={mostVisitedBookmarks}
             showEmpty={false}
-            cardWidth={settings?.card_size?.width ?? 80}
+            cardWidth={settings?.card_size?.width ?? CARD_SIZE_DEFAULTS.width}
             cardHeight={settings?.card_size?.height ?? 60}
             cardStyle={settings?.card_style ?? 'info'}
             cardIconSize={settings?.card_icon_size ?? 60}
@@ -586,7 +586,7 @@
                       showHeading={true}
                       showEmpty={true}
                       canAddBookmark={isAuthenticated}
-                      cardWidth={settings?.card_size?.width ?? 80}
+                      cardWidth={settings?.card_size?.width ?? CARD_SIZE_DEFAULTS.width}
                       cardHeight={settings?.card_size?.height ?? 60}
                       cardStyle={settings?.card_style ?? 'info'}
                       cardIconSize={settings?.card_icon_size ?? 60}
@@ -613,7 +613,7 @@
                     inlineActions={true}
                     showEmpty={true}
                     canAddBookmark={isAuthenticated}
-                    cardWidth={settings?.card_size?.width ?? 80}
+                    cardWidth={settings?.card_size?.width ?? CARD_SIZE_DEFAULTS.width}
                     cardHeight={settings?.card_size?.height ?? 60}
                     cardStyle={settings?.card_style ?? 'info'}
                     cardIconSize={settings?.card_icon_size ?? 60}

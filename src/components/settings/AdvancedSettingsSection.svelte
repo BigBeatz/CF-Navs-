@@ -121,7 +121,7 @@
               max={CARD_SIZE_LIMITS.width.max}
               step={1}
               suffixUnit="px"
-              placeholder="默认 80"
+              placeholder="默认 160"
               disabled={form.card_style !== 'info'}
               bind:value={form.card_size.width}
               ariaLabel="卡片最小宽度"

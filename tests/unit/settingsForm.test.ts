@@ -177,7 +177,7 @@ describe('settings form model', () => {
     expect(form.backgrounds.light.value).toBe('#ffffff')
     expect(form.backgrounds.dark.value).toBe('#ffffff')
     expect(form.search_engine.current).toBe('Kagi')
-    expect(form.card_size).toEqual({ width: 80, height: 60 })
+    expect(form.card_size).toEqual({ width: 160, height: 60 })
     expect(form.navigation).toEqual({ position: 'left', always_expanded: false, top_layout: 'scroll' })
   })
 

@@ -141,6 +141,7 @@ describe('worker settings data helpers', () => {
   })
 
   it('normalizes category display and card size boundaries from persisted settings', () => {
+    expect(settingsFromRows([]).card_size).toEqual({ width: 160, height: 60 })
     expect(settingsFromRows([]).category_display).toEqual({
       root_font_size: 16,
       root_icon_size: 20,

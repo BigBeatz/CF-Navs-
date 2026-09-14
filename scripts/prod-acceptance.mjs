@@ -409,7 +409,7 @@ async function runFirstVisitChecks(session) {
   )
 
   const cache = await session.call(pageCacheReport)
-  const precache = cache.entries.find((entry) => /^cf-navs-v\d+$/.test(entry.key))
+  const precache = cache.entries.find((entry) => /^cf-navs-v[0-9a-f]+$/i.test(entry.key))
   const hasJs = Boolean(precache?.urls.some((url) => /\/assets\/index-[^/]+\.js$/.test(url)))
   const hasCss = Boolean(precache?.urls.some((url) => /\/assets\/index-[^/]+\.css$/.test(url)))
   check(

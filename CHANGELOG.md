@@ -7,6 +7,12 @@
 
 ## [Unreleased]
 
+### 构建分包与 SPA 回退边界修复
+
+- 缺失的 `/assets/*` 构建分包现在返回 404，不再被 SPA `index.html` 回退伪装成 JavaScript；文档导航仍由 Worker 显式回退到应用壳。
+- Service Worker 由构建产物指纹自动生成缓存版本，并拒绝、清除构建资源 URL 上的 HTML 响应，避免旧壳与已删除 hash 分包混存导致懒加载失败。
+- 验证：Worker 与 Service Worker 聚焦回归 25/25；完整 `npm test` 118 files / 872 tests、`npm run type-check` 0 errors / 0 warnings、`npm run build` 通过，构建产物自动生成带 12 位十六进制指纹的 SW 缓存名；未执行部署后的生产与认证浏览器验收。
+
 ### 新安装默认卡片宽度调整
 
 - 新安装及缺失 `card_size` 设置时，详情卡片最小宽度默认由 80px 调整为 160px；已有 D1 中已保存的卡片宽度不迁移。

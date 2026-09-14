@@ -1,6 +1,7 @@
 import { Hono } from 'hono'
 import { ErrCode } from '../shared/types'
 import { withAssetCacheHeaders } from './lib/assetHeaders'
+import { fetchAssetResponse } from './lib/assetRouting'
 import { corsHeaders, corsPreflight } from './lib/cors'
 import { fail, ok } from './lib/response'
 import { authRequired } from './middleware/auth'
@@ -85,7 +86,7 @@ app.all('*', async (c) => {
     return c.json(fail(ErrCode.NOT_FOUND, 'not found'))
   }
 
-  const response = await c.env.ASSETS.fetch(c.req.raw)
+  const response = await fetchAssetResponse(c.req.raw, c.env.ASSETS)
   return withAssetCacheHeaders(c.req.raw, response)
 })
 

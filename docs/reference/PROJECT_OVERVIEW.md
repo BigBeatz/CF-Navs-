@@ -176,10 +176,10 @@ type = "Text"
 globs = ["**/schema.sql"]
 fallthrough = true
 
-[assets]                            # 静态资源配置
+[assets]                            # 静态资源配置；文档导航由 Worker 回退到应用壳
 directory = "./dist"
 binding = "ASSETS"
-not_found_handling = "single-page-application"
+not_found_handling = "none"          # 缺失构建分包保持 404，避免返回 index.html
 
 [[d1_databases]]                    # D1 数据库
 binding = "DB"

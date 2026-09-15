@@ -6,17 +6,20 @@
     getCategoryTextIcon,
     normalizeCategoryIcon,
   } from '../lib/categoryIconDisplay'
+  import { withIconAccessKey } from '../lib/iconAccessKey'
 
   export let category: CategoryIconValue
   export let size: number | string = 36
   export let className = ''
   export let label = ''
+  export let iconAccessKey = ''
+  export let imageLoading: 'lazy' | 'eager' = 'lazy'
 
   let imageFailed = false
   let stateKey = ''
 
   $: iconValue = normalizeCategoryIcon(category)
-  $: imageUrl = getCategoryImageIconUrl(category)
+  $: imageUrl = withIconAccessKey(getCategoryImageIconUrl(category), iconAccessKey)
   $: textIcon = getCategoryTextIcon(category)
   $: if (`${category.id}:${iconValue}:${category.title}` !== stateKey) {
     stateKey = `${category.id}:${iconValue}:${category.title}`
@@ -37,7 +40,7 @@
     aria-label={label || undefined}
   >
     {#if imageUrl && !imageFailed}
-      <img src={imageUrl} alt="" loading="lazy" decoding="async" on:error={handleImageError} />
+      <img src={imageUrl} alt="" loading={imageLoading} decoding="async" on:error={handleImageError} />
     {:else if textIcon}
       <span class="category-icon-text">{textIcon}</span>
     {:else}
@@ -68,6 +71,18 @@
     height: 100%;
     display: block;
     object-fit: cover;
+  }
+  :global(.admin-icon-badge.category-icon) {
+    border: 0;
+    border-radius: 8px;
+    background: var(--admin-icon-badge-bg, var(--home-stat-bg, rgba(255, 255, 255, 0.5)));
+    color: var(--admin-subtle, var(--home-text-color, #0f172a));
+  }
+
+  :global(.admin-icon-badge.category-icon) img {
+    width: 18px;
+    height: 18px;
+    object-fit: contain;
   }
 
   .category-icon-text {

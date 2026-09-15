@@ -65,7 +65,7 @@
     iconifyName = iconifySelection.iconifyName
     iconifyUseConfirmed = iconifySelection.iconifyUseConfirmed
     confirmedIconifyName = iconifySelection.confirmedIconifyName
-    iconifySearchState = createBookmarkIconifySearchState()
+    iconifySearchState = createBookmarkIconifySearchState(iconifySearchState.requestId)
     clearIconifySearchTimer()
   }
 
@@ -148,7 +148,7 @@
     iconifyUseConfirmed = false
     confirmedIconifyName = ''
     iconifyError = ''
-    iconifySearchState = createBookmarkIconifySearchState()
+    iconifySearchState = createBookmarkIconifySearchState(iconifySearchState.requestId)
     clearIconifySearchTimer()
   }
 

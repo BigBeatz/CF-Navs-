@@ -94,7 +94,7 @@
     iconifyName = iconifySelection.iconifyName
     iconifyUseConfirmed = iconifySelection.iconifyUseConfirmed
     confirmedIconifyName = iconifySelection.confirmedIconifyName
-    iconifySearchState = createBookmarkIconifySearchState()
+    iconifySearchState = createBookmarkIconifySearchState(iconifySearchState.requestId)
     // 弹窗是单例，requestId 必须接着上一轮往下走，否则上一轮在途的响应会污染新表单。
     titleLookupState = createBookmarkTitleState(titleLookupState.requestId)
     // 编辑模式也重新生成候选

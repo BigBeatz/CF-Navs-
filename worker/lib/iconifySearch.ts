@@ -73,20 +73,26 @@ export function normalizeIconifySearchQuery(value: string): string {
   if (!trimmed) return ''
 
   const withoutUrl = iconifyNameFromKnownHost(trimmed) ?? trimmed
-  const normalized = withoutUrl
+  const withoutPrefix = withoutUrl
     .replace(/^iconify:/, '')
     .replace(/^@iconify-json\//, '')
     .replace(/^@iconify-icons\//, '')
-    .replace(/\s+/g, '')
     .replace(/\/+$/g, '')
-    .replace(/\//g, ':')
 
-  if (/^[a-z0-9-]+:[a-z0-9-]+$/.test(normalized)) {
-    return normalized
+  const compactIconifyName = withoutPrefix.replace(/\s+/g, '').replace(/\//g, ':')
+  if (/^[a-z0-9-]+:[a-z0-9-]+$/.test(compactIconifyName)) {
+    return compactIconifyName
   }
 
-  const plain = normalized.replace(/[^a-z0-9-]/g, '')
-  return plain.length >= 2 && plain.length <= 80 ? plain : ''
+  const plain = withoutPrefix
+    .replace(/[^a-z0-9-]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+  if (!plain) return ''
+
+  const words = plain.split(' ')
+  const query = words.length > 1 && words.every((word) => word.length === 1) ? words.join('') : plain
+  return query.length >= 2 && query.length <= 80 ? query : ''
 }
 
 function iconifyNameFromKnownHost(value: string): string | null {
@@ -309,11 +315,16 @@ export async function searchIconifyIcons(
     items.slice(0, ICONIFY_SVG_INSPECT_LIMIT),
     writeIconCache,
   )
+  const candidates = rankIconifyCandidates(inspected)
   const data: IconifySearchResp = {
     query,
-    candidates: rankIconifyCandidates(inspected),
+    candidates,
   }
 
-  setCachedIconifySearch(query, data)
+  // 上游有候选但检查请求暂时全部失败时不要把空结果缓存十分钟；下一次输入/重开
+  // 应该重新尝试，而不是被一次短暂的边缘或上游抖动钉死。
+  if (candidates.length > 0 || items.length === 0) {
+    setCachedIconifySearch(query, data)
+  }
   return data
 }

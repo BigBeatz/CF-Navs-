@@ -33,6 +33,15 @@ import { fail, ok } from '../lib/response'
 import type { HonoEnv } from '../types'
 
 export const iconRoutes = new Hono<HonoEnv>()
+function normalizeCategoryIconUrl(value: string): string | null {
+  const icon = value.trim()
+  if (!icon) return null
+  if (/^data:image\//i.test(icon) || /^https?:\/\//i.test(icon)) return icon
+
+  const normalized = normalizeIconifySearchQuery(icon)
+  const [prefix, name] = normalized.split(':')
+  return prefix && name ? iconifyUrlFromParams(prefix, name) : null
+}
 
 // 后台预览私密对象图标用的短期授权。签名密钥复用 settings.jwt_secret，因此改密码
 // （rotateJwtSecret）会顺带作废全部已签发授权。该端点在 worker/index.ts 上挂
@@ -235,21 +244,25 @@ iconRoutes.get('/category-icon/:id', async (c) => {
     if (!category.icon) {
       return cachedFallbackIconResponse(c, cacheKey, category.title, '', fallbackCache)
     }
+    const categoryIconUrl = normalizeCategoryIconUrl(category.icon)
+    if (!categoryIconUrl) {
+      return cachedFallbackIconResponse(c, cacheKey, category.title, '', fallbackCache)
+    }
 
-    if (category.icon.startsWith('data:image/')) {
-      const response = dataUriToResponse(category.icon, successCache)
+    if (categoryIconUrl.startsWith('data:image/')) {
+      const response = dataUriToResponse(categoryIconUrl, successCache)
       if (!response) return cachedFallbackIconResponse(c, cacheKey, category.title, '', fallbackCache)
       cacheResponse(c, cacheKey, response)
       return response
     }
 
-    if (!/^https?:\/\//i.test(category.icon)) {
+    if (!/^https?:\/\//i.test(categoryIconUrl)) {
       return cachedFallbackIconResponse(c, cacheKey, category.title, '', fallbackCache)
     }
 
-    const fetchedIcon = await fetchCacheableIcon(category.icon)
+    const fetchedIcon = await fetchCacheableIcon(categoryIconUrl)
     if (!fetchedIcon) {
-      return cachedFallbackIconResponse(c, cacheKey, category.title, category.icon, fallbackCache)
+      return cachedFallbackIconResponse(c, cacheKey, category.title, categoryIconUrl, fallbackCache)
     }
 
     const response = iconBytesToResponse(fetchedIcon, successCache)

@@ -669,12 +669,15 @@
 
   async function handleSubmitCategory(form: CategoryFormValue): Promise<void> {
     const returnToHome = categoryCreateReturnToHome
+    // 提交意图只看表单本身。`resetCategoryState()` 会把 categoryModalMode 改回 'create'，
+    // 在它之后再读 mode 就会让编辑也提示「已创建」——这条提示语曾经一直是「已创建」。
+    const isEdit = form.id != null
     savingCategory = true
     categoryError = ''
 
     try {
       let category: Category
-      if (categoryModalMode === 'edit' && form.id != null) {
+      if (isEdit) {
         category = await api.categories.update(Number(form.id), toCategoryPayload(form))
       } else {
         category = await api.categories.create(toCategoryPayload(form))
@@ -691,7 +694,7 @@
         await tick()
       }
       toastStore.addToast(
-        categoryModalMode === 'edit' ? `分类「${category.title}」已更新` : `分类「${category.title}」已创建`,
+        isEdit ? `分类「${category.title}」已更新` : `分类「${category.title}」已创建`,
         'success',
       )
     } catch (error) {
@@ -774,12 +777,14 @@
   }
 
   async function handleSubmitBookmark(form: BookmarkFormValue): Promise<void> {
+    // 同 handleSubmitCategory：意图只看表单，resetBookmarkState() 之后 mode 已经变回 'create'。
+    const isEdit = form.id != null
     savingBookmark = true
     bookmarkError = ''
 
     try {
       let bookmark: Bookmark
-      if (bookmarkModalMode === 'edit' && form.id != null) {
+      if (isEdit) {
         bookmark = await api.bookmarks.update(Number(form.id), toBookmarkPayload(form))
       } else {
         bookmark = await api.bookmarks.create(toBookmarkPayload(form))
@@ -790,7 +795,7 @@
       await refreshAdminDataAfterMutation()
      refreshBookmarkIconCacheInBackground(bookmark.id)
       toastStore.addToast(
-        bookmarkModalMode === 'edit' ? `书签「${bookmark.title}」已更新` : `书签「${bookmark.title}」已创建`,
+        isEdit ? `书签「${bookmark.title}」已更新` : `书签「${bookmark.title}」已创建`,
         'success',
       )
    } catch (error) {

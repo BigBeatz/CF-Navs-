@@ -10,7 +10,7 @@ import {
 } from '../lib/db'
 import {
   dataUriToResponse,
-  fetchCacheableIcon,
+  fetchIcon,
   iconBytesToDataUri,
   iconBytesToResponse,
   isIconifyIconUrl,
@@ -23,6 +23,7 @@ import {
   fallbackIconResponse,
   getCachedResponse,
   iconCacheKey,
+  iconFetchFallbackResponse,
   ICON_FALLBACK_CACHE,
   ICON_PRIVATE_CACHE,
   ICON_SUCCESS_CACHE,
@@ -85,12 +86,18 @@ iconRoutes.get('/iconify/:prefix/:name', async (c) => {
       return cached
     }
 
-    const icon = await fetchCacheableIcon(iconUrl)
-    if (!icon) {
-      return cachedFallbackIconResponse(c, cacheKey, c.req.param('name').replace(/\.svg$/i, ''), iconUrl)
+    const outcome = await fetchIcon(iconUrl)
+    if (!outcome.ok) {
+      return iconFetchFallbackResponse(
+        c,
+        cacheKey,
+        outcome.failure,
+        c.req.param('name').replace(/\.svg$/i, ''),
+        iconUrl,
+      )
     }
 
-    const response = iconBytesToResponse(icon, ICON_SUCCESS_CACHE)
+    const response = iconBytesToResponse(outcome.icon, ICON_SUCCESS_CACHE)
     cacheResponse(c, cacheKey, response)
     return response
   } catch {
@@ -193,11 +200,12 @@ iconRoutes.get('/icon/:id', async (c) => {
       return cachedFallbackIconResponse(c, cacheKey, bookmark.title, bookmark.url, fallbackCache)
     }
 
-    const fetchedIcon = await fetchCacheableIcon(bookmark.icon)
-    if (!fetchedIcon) {
-      return cachedFallbackIconResponse(c, cacheKey, bookmark.title, bookmark.url, fallbackCache)
+    const outcome = await fetchIcon(bookmark.icon)
+    if (!outcome.ok) {
+      return iconFetchFallbackResponse(c, cacheKey, outcome.failure, bookmark.title, bookmark.url, fallbackCache)
     }
 
+    const fetchedIcon = outcome.icon
     if (isIconifyIconUrl(bookmark.icon)) {
       const response = iconBytesToResponse(fetchedIcon, successCache)
       cacheResponse(c, cacheKey, response)
@@ -260,12 +268,19 @@ iconRoutes.get('/category-icon/:id', async (c) => {
       return cachedFallbackIconResponse(c, cacheKey, category.title, '', fallbackCache)
     }
 
-    const fetchedIcon = await fetchCacheableIcon(categoryIconUrl)
-    if (!fetchedIcon) {
-      return cachedFallbackIconResponse(c, cacheKey, category.title, categoryIconUrl, fallbackCache)
+    const outcome = await fetchIcon(categoryIconUrl)
+    if (!outcome.ok) {
+      return iconFetchFallbackResponse(
+        c,
+        cacheKey,
+        outcome.failure,
+        category.title,
+        categoryIconUrl,
+        fallbackCache,
+      )
     }
 
-    const response = iconBytesToResponse(fetchedIcon, successCache)
+    const response = iconBytesToResponse(outcome.icon, successCache)
     cacheResponse(c, cacheKey, response)
     return response
   } catch {

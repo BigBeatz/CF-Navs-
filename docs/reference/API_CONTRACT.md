@@ -159,9 +159,9 @@
 | GET | `/api/fetch-favicon?url=` | 登录 | 服务端依次解析目标站 `<link rel="icon">`、Web App Manifest `icons[]`、`/favicon.ico`，失败或超时回退 `favicon.im` |
 | GET | `/api/iconify-search?query=` | 登录 | 搜索 Iconify 候选并返回预览地址 |
 | GET | `/api/icon-access` | 登录 | 签发后台预览私密对象图标用的短期授权，返回 `IconAccessResp`。响应 `private, no-store` |
-| GET | `/api/icon/:id` | 无 | 书签图标代理，**只对匿名可见的书签返回真实图标**（见下方可见性规则）。通过判定后优先返回 Cloudflare edge cache；cache miss 时读取书签的图标地址、标题与 D1 中缓存的 `icon_blob`；无 blob 时按书签保存的 HTTP(S) 图标地址服务端抓取并写回 D1；普通 HTTP(S) 外站抓取失败、图标缺失、非 HTTP(S) 值或缓存损坏时返回临时 SVG 文字图标，并带 `X-Icon-Fallback: 1` |
-| GET | `/api/category-icon/:id` | 无 | 分类图标代理，**只对匿名可见的分类返回真实图标**（见下方可见性规则）。优先返回 Cloudflare edge cache；cache miss 时一次读取全部分类，同时算出可见集合与目标分类；HTTP(S) 分类图标由 Worker 服务端抓取；外站失败或图标缺失时返回临时 SVG 文字图标，并带 `X-Icon-Fallback: 1` |
-| GET | `/api/iconify/:set/:name.svg` | 无 | Iconify 图标预览代理。新增/编辑书签弹窗通过该同源代理预览，成功响应可被 Cloudflare edge cache 复用；失败时返回 `no-store` 临时 SVG 文字图标，并带 `X-Icon-Fallback: 1` |
+| GET | `/api/icon/:id` | 无 | 书签图标代理，**只对匿名可见的书签返回真实图标**（见下方可见性规则）。通过判定后优先返回 Cloudflare edge cache；cache miss 时读取书签的图标地址、标题与 D1 中缓存的 `icon_blob`；无 blob 时按书签保存的 HTTP(S) 图标地址服务端抓取并写回 D1；普通 HTTP(S) 外站抓取失败、图标缺失、非 HTTP(S) 值或缓存损坏时返回临时 SVG 文字图标，并带 `X-Icon-Fallback: 1`（缓存策略见下方「图标抓取失败的两种兜底」） |
+| GET | `/api/category-icon/:id` | 无 | 分类图标代理，**只对匿名可见的分类返回真实图标**（见下方可见性规则）。优先返回 Cloudflare edge cache；cache miss 时一次读取全部分类，同时算出可见集合与目标分类；HTTP(S) 分类图标由 Worker 服务端抓取；外站失败或图标缺失时返回临时 SVG 文字图标，并带 `X-Icon-Fallback: 1`（缓存策略见下方「图标抓取失败的两种兜底」） |
+| GET | `/api/iconify/:set/:name.svg` | 无 | Iconify 图标预览代理。新增/编辑书签弹窗通过该同源代理预览，成功响应可被 Cloudflare edge cache 复用；失败时返回临时 SVG 文字图标并带 `X-Icon-Fallback: 1`（缓存策略见下方「图标抓取失败的两种兜底」） |
 
 **图标端点的匿名可见性规则。** `/api/icon/:id` 与 `/api/category-icon/:id` 按可猜测的整数 ID 寻址且不要求登录，因此两者都在返回真实图标前做一次可见性判定，口径与 `/api/public/data` 完全一致：私密书签不可见；公开书签只要挂在私密分类（或私密分类的后代）下同样不可见；私密分类及其后代不可见。层级规则复用 `getPublicCategoryIds` 的祖先链遍历，不在图标端点重复实现。被拒绝的请求返回**不含标题与域名**的兜底 SVG（`public, max-age=300`，带 `X-Icon-Fallback: 1`），与「ID 不存在」的响应完全一致，不提供存在性或内容线索——兜底 SVG 会渲染标题前 4 个字符或 URL 的 hostname，所以这两条路径必须传空标题与空 URL。只有 HTTP 400（非正整数 ID）走 `no-store`。
 
@@ -176,6 +176,8 @@
 判定发生在 cache 命中查询**之后**（匿名路径），因此收紧判定口径时必须同时递增 `worker/lib/iconResponses.ts` 的 `ICON_CACHE_NAMESPACE`：edge cache 的键不含身份，旧条目是在没有判定的情况下写入的，`s-maxage` 为 6 天，只加服务端过滤不会让它们失效。命名空间体现在缓存键的 `ns` 参数上，与前端用于图标更新失效的 `v` 参数并存；`key` 参数会被键归一化丢弃，所以伪造的 `key` 不会让缓存条目碎片化。可见性判定给 `/api/icon/:id` 的 cache miss 增加一次分类表读取（`/api/category-icon/:id` 不增加，它本来就要读分类），命中路径不受影响，同源请求数也不变。
 
 **真实图标与兜底图标的缓存策略是分开的**：真实图标 `public, max-age=7 天, s-maxage=6 天, immutable`，兜底图标只 `public, max-age=300, s-maxage=300`。兜底刻意短命，好让后来补上的真实图标很快生效——按成功策略缓存兜底等于把「暂时没有图标」钉死一周。
+
+**图标抓取失败的两种兜底。** Worker 抓取外站图标失败时按性质分流，不再一律返回同一种可缓存的兜底：`404`/`410`、返回内容不是图片（认证墙、登录页）或超出大小上限记为**图标不存在**（`missing`），兜底 SVG 沿用 `public, max-age=300, s-maxage=300`——这类失败重试没有意义，不缓存等于每次访问都打一次上游。超时、网络错误、`429`/`5xx`、空 body 记为**瞬时失败**（`transient`），兜底 SVG 一律 `no-store`：它是 `200 + image/svg+xml`，与真实图标在缓存和网络面板里完全一样，一旦写进 edge、Service Worker 或浏览器，访客会在整个缓存期内持续看到文字兜底，而请求看起来是成功的（实测并发抓取一屏图标时上游会成批瞬时失败）。`public/sw.js` 的 `cacheIconResponse` 按 `no-store` 拒收，所以瞬时失败的兜底不会留在本机；带合法 `key` 的授权路径本来就是 `private, no-store`，两种性质在响应上没有区别。前端 `CategoryIcon.svelte` 对 `<img>` 的加载失败重试一次（`&retry=1`），重试仍失败才显示标题首字，并在图标或授权 key 变化时重新计数。
 
 图标来源包括：
 

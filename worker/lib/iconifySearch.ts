@@ -1,5 +1,5 @@
 import type { IconifyCandidate, IconifySearchResp } from '../../shared/types'
-import { fetchCacheableIcon, iconBytesToResponse } from './iconData'
+import { fetchIcon, iconBytesToResponse } from './iconData'
 import { ICON_SUCCESS_CACHE } from './iconResponses'
 import { extractSvgText, svgHasColor } from './svgColor'
 
@@ -246,9 +246,10 @@ async function inspectIconifyCandidate(
   const iconUrl = iconifyUrlFromName(item.name)
   if (!iconUrl) return null
 
-  const icon = await fetchCacheableIcon(iconUrl, ICONIFY_ICON_FETCH_TIMEOUT_MS)
-  if (!icon) return null
+  const outcome = await fetchIcon(iconUrl, ICONIFY_ICON_FETCH_TIMEOUT_MS)
+  if (!outcome.ok) return null
 
+  const icon = outcome.icon
   const svg = extractSvgText(icon.bytes, icon.contentType)
   const colored = svg ? svgHasColor(svg) : false
   const response = iconBytesToResponse(icon, ICON_SUCCESS_CACHE)

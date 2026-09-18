@@ -7,6 +7,14 @@
 
 ## [Unreleased]
 
+### 首页书签图标恢复本地优先加载
+
+- 聚合接口继续只返回 `icon_cached` 轻量标志；首页在本地缓存未命中时，先从 `cf-navs-bookmark-icons-v1` 读取，若 D1 已有持久化图标则抓取一次稳定的 `/api/icon/:id` 响应写入浏览器 Cache Storage，再把本地对象 URL 交给图片元素。
+- 恢复异步 Cache Storage 读取期间的等待，避免本地副本尚未读完时先挂载远程 `<img>`；fallback SVG、`private, no-store` 与超过 512 KiB 的响应不进入本地图标缓存，代理失败后回退到已保存的原始 HTTP(S) 图标 URL，后台列表异步读取使用共享请求序列。
+- 文档同步更新 `API_CONTRACT.md`、`TECHNICAL_NOTES.md` 与图标排障说明。
+- 验证：`npm run type-check` 0 errors / 0 warnings；`npm test` 120 files / 897 tests 全通过；`npm run build` 成功；新增首页组件级重挂载用例确认首次写入 Cache Storage、重新挂载不再请求 `/api/icon`。
+- 未部署；L2 浏览器回归与 L3（含 Cache Storage 预算）待部署后执行。
+
 ### 分类图标瞬时失败兜底与后台回退修复
 
 - 图标代理抓取外站图标失败时按性质分流：`404`/`410`、非图片载荷或超出大小上限记为「图标不存在」，兜底 SVG 沿用 5 分钟短缓存；超时、网络错误、`429`/`5xx`、空 body 记为「瞬时失败」，兜底 SVG 改为 `no-store`，不再写进 edge、Service Worker 或浏览器缓存。此前一次瞬时失败会把文字兜底钉住整个 5 分钟缓存期，而响应是 `200 + image/svg+xml`，在网络面板里与真实图标无异——这正是「图标请求明明加载成功、界面却回退成文字」的成因。

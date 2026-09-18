@@ -317,6 +317,10 @@ export async function searchIconifyIcons(
     writeIconCache,
   )
   const candidates = rankIconifyCandidates(inspected)
+  // 上游搜索已经返回候选，但候选 SVG 检查全部遇到瞬时失败时，不能把这次故障伪装成
+  // 「没有搜索结果」。返回 null 让路由给出可重试的 502，同时不写入搜索缓存。
+  if (items.length > 0 && candidates.length === 0) return null
+
   const data: IconifySearchResp = {
     query,
     candidates,

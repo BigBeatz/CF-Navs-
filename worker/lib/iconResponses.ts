@@ -136,3 +136,14 @@ export function iconFetchFallbackResponse(
   }
   return cachedFallbackIconResponse(context, request, title, url, permanentCacheControl)
 }
+
+// 分类图标由 <img> 直接加载。瞬时失败不能用 200 兜底，否则浏览器会把错误图当成
+// 成功结果，前端既无法重试，用户也会一直看到文字图标。保留相同的 SVG 作为响应体，
+// 但用 503 让 CategoryIcon 进入退避重试路径；no-store 继续阻止各级缓存污染。
+export function transientIconErrorResponse(title: string, url: string, cacheControl = ICON_FAILURE_CACHE): Response {
+  const fallback = fallbackIconResponse(title, url, cacheControl)
+  return new Response(fallback.body, {
+    status: 503,
+    headers: fallback.headers,
+  })
+}

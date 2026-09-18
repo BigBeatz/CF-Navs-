@@ -20,7 +20,7 @@ describe('worker Iconify search helpers', () => {
     expect(normalizeIconifySearchQuery('x')).toBe('')
   })
 
-  it('does not cache an empty inspection result when upstream returned icons', async () => {
+  it('returns a retryable failure instead of caching an empty inspection result', async () => {
     let iconFetches = 0
     vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input)
@@ -46,7 +46,7 @@ describe('worker Iconify search helpers', () => {
     const first = await searchIconifyIcons('transient-empty-result', 'https://navs.test/api', writeIconCache)
     const second = await searchIconifyIcons('transient-empty-result', 'https://navs.test/api', writeIconCache)
 
-    expect(first?.candidates).toEqual([])
+    expect(first).toBeNull()
     expect(second?.candidates).toHaveLength(1)
     expect(iconFetches).toBe(2)
   })

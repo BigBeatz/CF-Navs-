@@ -240,6 +240,7 @@ describe('GET /api/category-icon/:id', () => {
 
     const response = await iconRequest(env, `/category-icon/3?key=${encodeURIComponent(grant)}`)
 
+    expect(response.status).toBe(503)
     expect(response.headers.get('X-Icon-Fallback')).toBe('1')
     expect(response.headers.get('Cache-Control')).toBe('private, no-store')
     expect(cachePuts).toHaveLength(0)
@@ -299,6 +300,7 @@ describe('anonymous icon caching', () => {
 
     const response = await iconRequest(createEnv(fixture), '/category-icon/3')
 
+    expect(response.status).toBe(503)
     expect(response.headers.get('X-Icon-Fallback')).toBe('1')
     expect(response.headers.get('Cache-Control')).toBe('no-store')
     expect(cachePuts).toHaveLength(0)

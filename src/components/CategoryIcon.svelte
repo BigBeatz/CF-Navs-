@@ -16,14 +16,15 @@
   export let iconAccessKey = ''
   export let imageLoading: 'lazy' | 'eager' = 'lazy'
 
-  // 加载失败只重试一次，重试仍失败才退回文字兜底。原实现是单向闩锁：一次瞬时失败
-  // （代理抖动、请求被中断、刷新期间的路由切换）就把图标永久钉成文字，此后即使请求
-  // 已经恢复正常也不会再试——网络面板里能看到成功响应，界面却一直是首字。
-  const ICON_RETRY_DELAY_MS = 1200
+  // 分类代理对上游瞬时失败返回 503，避免把文字兜底伪装成成功图片。页面刷新时如果
+  // 恰好撞上上游限流，按退避持续重试，直到代理恢复；真正不存在的图标仍由 Worker
+  // 返回 200 兜底，不会进入这条循环。
+  const ICON_RETRY_DELAYS_MS = [1200, 4000, 10000, 30000]
 
   let baseUrl = ''
   let retryUrl = ''
   let failedUrl = ''
+  let retryAttempt = 0
   let retryTimer: ReturnType<typeof setTimeout> | null = null
 
   $: iconValue = normalizeCategoryIcon(category)
@@ -34,6 +35,7 @@
     baseUrl = nextImageUrl
     retryUrl = ''
     failedUrl = ''
+    retryAttempt = 0
     clearRetryTimer()
   }
   $: imageUrl = retryUrl || baseUrl
@@ -47,18 +49,20 @@
   }
 
   function handleImageError(): void {
-    // 只有同源代理地址值得重试：data URI 加载失败不是网络问题，重试也不会变好，
-    // 给它拼 `&retry=1` 只会得到一个更没意义的 URL。
-    if (retryUrl || !baseUrl.startsWith('/api/')) {
+    // 只有同源代理地址值得重试：data URI 加载失败不是网络问题，重试也不会变好。
+    if (!baseUrl.startsWith('/api/')) {
       failedUrl = retryUrl || baseUrl
       return
     }
 
     clearRetryTimer()
+    failedUrl = retryUrl || baseUrl
+    const delay = ICON_RETRY_DELAYS_MS[Math.min(retryAttempt, ICON_RETRY_DELAYS_MS.length - 1)]
+    retryAttempt += 1
     retryTimer = setTimeout(() => {
       retryTimer = null
-      retryUrl = `${baseUrl}${baseUrl.includes('?') ? '&' : '?'}retry=1`
-    }, ICON_RETRY_DELAY_MS)
+      retryUrl = `${baseUrl}${baseUrl.includes('?') ? '&' : '?'}retry=${retryAttempt}`
+    }, delay)
   }
 
   // 成功加载后不清空 retryUrl：那会把 src 换回失败过的 baseUrl，形成失败—重试的循环。

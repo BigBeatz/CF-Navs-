@@ -21,12 +21,14 @@ import {
   cacheResponse,
   errorIconResponse,
   fallbackIconResponse,
+  ICON_FAILURE_CACHE,
   getCachedResponse,
   iconCacheKey,
   iconFetchFallbackResponse,
   ICON_FALLBACK_CACHE,
   ICON_PRIVATE_CACHE,
   ICON_SUCCESS_CACHE,
+  transientIconErrorResponse,
 } from '../lib/iconResponses'
 import { createIconAccessGrant, verifyIconAccessGrant } from '../lib/iconSignature'
 import { getJwtSecret } from '../lib/jwt'
@@ -270,6 +272,13 @@ iconRoutes.get('/category-icon/:id', async (c) => {
 
     const outcome = await fetchIcon(categoryIconUrl)
     if (!outcome.ok) {
+      if (outcome.failure === 'transient') {
+        return transientIconErrorResponse(
+          category.title,
+          categoryIconUrl,
+          authorized ? fallbackCache : ICON_FAILURE_CACHE,
+        )
+      }
       return iconFetchFallbackResponse(
         c,
         cacheKey,
@@ -284,6 +293,6 @@ iconRoutes.get('/category-icon/:id', async (c) => {
     cacheResponse(c, cacheKey, response)
     return response
   } catch {
-    return fallbackIconResponse('', '')
+    return transientIconErrorResponse('', '')
   }
 })

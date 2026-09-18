@@ -44,6 +44,7 @@
   let confirmedIconifyName = ''
   let iconifySearchState: BookmarkIconifySearchState = createBookmarkIconifySearchState()
   let iconifySearchTimer: ReturnType<typeof setTimeout> | null = null
+  let iconifySearchAbortController: AbortController | null = null
   let iconifyError = ''
 
   $: nextKey = JSON.stringify({ open, mode, value })
@@ -93,6 +94,8 @@
       clearTimeout(iconifySearchTimer)
       iconifySearchTimer = null
     }
+    iconifySearchAbortController?.abort()
+    iconifySearchAbortController = null
   }
 
   function scheduleIconifyCandidateSearch(enabled: boolean, value: string) {
@@ -110,17 +113,22 @@
   }
 
   async function loadIconifyCandidates(query: string, requestId: number) {
+    const controller = new AbortController()
+    iconifySearchAbortController = controller
     try {
-      const result = await iconifyApi.search(query)
+      const result = await iconifyApi.search(query, controller.signal)
       iconifySearchState = resolveBookmarkIconifySearchSuccess(iconifySearchState, {
         requestId,
         candidates: result.candidates,
       })
     } catch (searchError) {
+      if (controller.signal.aborted) return
       iconifySearchState = resolveBookmarkIconifySearchError(iconifySearchState, {
         requestId,
         error: getErrorMessage(searchError),
       })
+    } finally {
+      if (iconifySearchAbortController === controller) iconifySearchAbortController = null
     }
   }
 

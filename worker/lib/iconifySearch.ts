@@ -316,19 +316,29 @@ export async function searchIconifyIcons(
     items.slice(0, ICONIFY_SVG_INSPECT_LIMIT),
     writeIconCache,
   )
-  const candidates = rankIconifyCandidates(inspected)
-  // 上游搜索已经返回候选，但候选 SVG 检查全部遇到瞬时失败时，不能把这次故障伪装成
-  // 「没有搜索结果」。返回 null 让路由给出可重试的 502，同时不写入搜索缓存。
-  if (items.length > 0 && candidates.length === 0) return null
+  const inspectedByName = new Map(inspected.map((candidate) => [candidate.name, candidate]))
+  // Search results are useful even when the optional SVG inspection is rate-limited.
+  // Keep the raw Iconify candidates as a fallback, so one inspection burst cannot
+  // turn a valid search into a 502 or an empty result.
+  const rankedPool = items.slice(0, ICONIFY_SVG_INSPECT_LIMIT).map((item) => (
+    inspectedByName.get(item.name) ?? {
+      ...createIconifyCandidate(item, false),
+      palette: item.palette,
+      order: item.order,
+    }
+  ))
+  const candidates = rankIconifyCandidates(rankedPool)
 
   const data: IconifySearchResp = {
     query,
     candidates,
   }
 
-  // 上游有候选但检查请求暂时全部失败时不要把空结果缓存十分钟；下一次输入/重开
-  // 应该重新尝试，而不是被一次短暂的边缘或上游抖动钉死。
-  if (candidates.length > 0 || items.length === 0) {
+  // Optional inspection failures must not be cached: the raw fallback keeps this
+  // request useful, while a later request gets a chance to recover colored/icon
+  // metadata after the upstream rate limit clears.
+  const inspectionLimit = Math.min(items.length, ICONIFY_SVG_INSPECT_LIMIT)
+  if (inspected.length >= inspectionLimit) {
     setCachedIconifySearch(query, data)
   }
   return data

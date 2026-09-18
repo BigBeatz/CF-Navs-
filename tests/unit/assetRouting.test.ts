@@ -47,7 +47,7 @@ describe('Worker asset routing', () => {
 
     expect(response.status).toBe(200)
     expect(await response.text()).toContain('<div id="app"></div>')
-    expect(paths).toEqual(['/admin', '/index.html'])
+    expect(paths).toEqual(['/admin', '/'])
   })
 
   it('replaces an Assets redirect with the app shell for SPA routes', async () => {
@@ -67,7 +67,7 @@ describe('Worker asset routing', () => {
 
     expect(response.status).toBe(200)
     expect(await response.text()).toContain('<div id="app"></div>')
-    expect(paths).toEqual(['/admin', '/index.html'])
+    expect(paths).toEqual(['/admin', '/'])
   })
 
   it('keeps valid JavaScript assets cacheable and unchanged', async () => {

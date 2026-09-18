@@ -20,7 +20,7 @@ describe('worker Iconify search helpers', () => {
     expect(normalizeIconifySearchQuery('x')).toBe('')
   })
 
-  it('returns a retryable failure instead of caching an empty inspection result', async () => {
+  it('keeps search candidates when optional SVG inspection is temporarily unavailable', async () => {
     let iconFetches = 0
     vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input)
@@ -46,7 +46,8 @@ describe('worker Iconify search helpers', () => {
     const first = await searchIconifyIcons('transient-empty-result', 'https://navs.test/api', writeIconCache)
     const second = await searchIconifyIcons('transient-empty-result', 'https://navs.test/api', writeIconCache)
 
-    expect(first).toBeNull()
+    expect(first?.candidates).toHaveLength(1)
+    expect(first?.candidates[0]).toMatchObject({ name: 'mdi:home', colored: false })
     expect(second?.candidates).toHaveLength(1)
     expect(iconFetches).toBe(2)
   })

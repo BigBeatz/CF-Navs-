@@ -1,4 +1,7 @@
-const APP_SHELL_PATH = '/index.html'
+// Cloudflare Assets may redirect `/index.html` to `/` on the deployed custom
+// domain. Fetch the canonical root instead so the fallback itself cannot leak
+// another redirect back to the browser.
+const APP_SHELL_PATH = '/'
 const ASSET_PATH_PREFIX = '/assets/'
 
 type AssetFetcher = {

@@ -345,6 +345,14 @@
     pointer-events: auto;
   }
 
+  /* 隐藏态移出 flex 流，避免在按钮组里留永久空槽/间隙（搜索框在视口内时的首页常态）。
+     锚定到 position:fixed 的 .floating-actions 角落，因不可见（opacity/visibility/pointer-events）无视觉影响。 */
+  .search-fab:not(.is-visible) {
+    position: absolute;
+    top: 0;
+    right: 0;
+  }
+
   @media (prefers-reduced-motion: reduce) {
     .search-fab {
       transition: none;

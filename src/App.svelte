@@ -6,6 +6,7 @@
     type BookmarkBatchMoveReq,
     type BookmarkReorganizeReq,
     type ChangePasswordReq,
+    type PublicBookmark,
     type Settings,
     type ThemeMode,
   } from '../shared/types'
@@ -13,6 +14,7 @@
   import Toast from './components/Toast.svelte'
   import Home from './views/Home.svelte'
   import Install from './views/Install.svelte'
+  import BookmarkLinkModal from './components/BookmarkLinkModal.svelte'
   import { api, getErrorMessage, isUnauthorizedError } from './lib/api'
   import type { BackupSelection as BackupSelectionInput } from './lib/appBackup'
   import { clearCachedAdminData } from './lib/adminDataCache'
@@ -117,6 +119,7 @@
   let LoginModalComponent: typeof import('./components/LoginModal.svelte').default | null = null
   let BookmarkEditModalComponent: typeof import('./components/BookmarkEditModal.svelte').default | null = null
   let CategoryEditModalComponent: typeof import('./components/CategoryEditModal.svelte').default | null = null
+  let SearchSpotlightComponent: typeof import('./components/SearchSpotlight.svelte').default | null = null
   let confirmDialog: ConfirmDialogState | null = null
   let confirmDialogResolver: ((confirmed: boolean) => void) | null = null
 
@@ -151,11 +154,69 @@
     },
   })
 
+  const ensureSearchSpotlightComponent = createLazyComponentLoader({
+    load: () => import('./components/SearchSpotlight.svelte'),
+    getCurrent: () => SearchSpotlightComponent,
+    setCurrent: (component) => {
+      SearchSpotlightComponent = component
+    },
+  })
+
   let loginModalOpen = false
   let categoryModalOpen = false
   let bookmarkModalOpen = false
   let categoryCreateReturnToHome = false
   let homeFocusCategoryId: number | null = null
+  let spotlightOpen = false
+  let viewBookmark: PublicBookmark | null = null
+
+  function anyBlockingModalOpen(): boolean {
+    return loginModalOpen || categoryModalOpen || bookmarkModalOpen || Boolean(confirmDialog) || Boolean(viewBookmark)
+  }
+
+  async function openSpotlight(): Promise<void> {
+    if (spotlightOpen || anyBlockingModalOpen()) return
+    if (currentView !== 'home' || !canSeeHome) return
+    await ensureSearchSpotlightComponent()
+    spotlightOpen = true
+  }
+
+  function closeSpotlight(): void {
+    spotlightOpen = false
+  }
+
+  function openBookmarkView(bookmark: PublicBookmark): void {
+    viewBookmark = bookmark
+  }
+
+  function closeBookmarkView(): void {
+    viewBookmark = null
+  }
+
+  // 全局快捷键集中在 App：Ctrl+K / Cmd+K / 「/」 唤起 Spotlight，Esc 关闭。
+  // 排除输入态与 IME；仅首页可见时生效；模态互斥由 openSpotlight 内部把关。
+  function handleGlobalKeyDown(event: KeyboardEvent): void {
+    const target = event.target as HTMLElement | null
+    const typing = Boolean(target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable))
+    if (event.isComposing || typing) return
+    if (currentView !== 'home' || !canSeeHome) return
+
+    if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
+      event.preventDefault()
+      if (spotlightOpen) closeSpotlight()
+      else void openSpotlight()
+      return
+    }
+    if (event.key === '/' && !spotlightOpen) {
+      event.preventDefault()
+      void openSpotlight()
+      return
+    }
+    if (event.key === 'Escape' && spotlightOpen) {
+      event.preventDefault()
+      closeSpotlight()
+    }
+  }
 
   let categoryModalMode: 'create' | 'edit' = 'create'
   let bookmarkModalMode: 'create' | 'edit' = 'create'
@@ -1030,6 +1091,8 @@
   })
 </script>
 
+<svelte:window on:keydown={handleGlobalKeyDown} />
+
 {#if installView}
   <Install
     mode={installView.mode}
@@ -1098,6 +1161,7 @@
           activeTheme={activeTheme}
           activeThemeMode={themeMode}
           onToggleTheme={handleToggleTheme}
+          onOpenSearch={openSpotlight}
         />
       </div>
     {:else if currentView === 'login'}
@@ -1240,6 +1304,20 @@
         onCancel={handleCloseCategoryModal}
         imageHostUrl={adminData.settings?.image_host_url ?? ''}
       />
+    {/if}
+    {#if SearchSpotlightComponent}
+      <svelte:component
+        this={SearchSpotlightComponent}
+        open={spotlightOpen}
+        bookmarks={publicData?.bookmarks ?? []}
+        categories={publicData?.categories ?? []}
+        onClose={closeSpotlight}
+        onViewBookmark={openBookmarkView}
+      />
+    {/if}
+
+    {#if viewBookmark}
+      <BookmarkLinkModal title={viewBookmark.title} url={viewBookmark.url} onClose={closeBookmarkView} />
     {/if}
 
 

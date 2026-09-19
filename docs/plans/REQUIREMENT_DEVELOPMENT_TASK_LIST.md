@@ -88,7 +88,7 @@
 
 | 项 | 内容 |
 | --- | --- |
-| 来源映射 | `FR-1.1`~`FR-1.6`；`docs/plans/FRONTEND_EXPERIENCE_OPTIMIZATION_REQUIREMENTS.md` §2.2（约 `:118-214`） |
+| 来源映射 | `FR-1.1`~`FR-1.6`；`docs/plans/FRONTEND_EXPERIENCE_OPTIMIZATION_REQUIREMENTS.md` §2.2（约 `:118-214`）；**需求文档：`docs/plans/SPOTLIGHT_SEARCH_REQUIREMENTS.md`（2026-09-19，含验收清单与风险）**；**开发文档：`docs/plans/SPOTLIGHT_SEARCH_DEVELOPMENT.md`（2026-09-19，实现契约/改动清单/阶段门/测试计划）** |
 | 现状事实 | **全部未实现**。`SearchBox.svelte` 是外部搜索引擎启动器而非书签过滤器（`src/components/SearchBox.svelte:61-71` 走 `window.open`）；本地过滤在 `Home.svelte`，经 `bind:query` 上传（`HomeHeroSearch.svelte:29` → `Home.svelte:429`）；唯一 `IntersectionObserver` 是图标懒加载单例（`src/lib/iconVisibility.ts:4-27`），可作写法先例 |
 | 子项 | `FR-1.1` 主搜索框离屏检测 action（目标 `src/lib/searchBoxVisibility.ts`，当前无该文件）<br>`FR-1.2` 离屏时右上角出现搜索按钮（接入 `src/components/HomeFloatingActions.svelte:67-124`，当前该行仅主题/后台/分类/登录登出）<br>`FR-1.3` 懒加载居中 Spotlight dialog（复用 `src/App.svelte:130-151` + `src/lib/appLazyComponent.ts:11-33` 的既有懒加载约定）<br>`FR-1.4` 唤起/关闭、快捷键、焦点陷阱、滚动锁与 Esc 层级（滚动锁当前内联在 `BookmarkEditModal.svelte:257-274,327-330`，需先抽出可共享实现）<br>`FR-1.5` 复用既有搜索索引，结果上限 50 条 + 键盘导航（索引在 `src/lib/homeData.ts:35-66,288-301`）<br>`FR-1.6` Spotlight 与页面过滤态相互独立（当前清空逻辑耦合于 `Home.svelte:251-258,329`） |
 | 强制前置 | 120ms 防抖常量当前是 `Home.svelte:38` 的私有值。**必须先抽成共享常量再接 Spotlight，禁止复制第二个数值** |

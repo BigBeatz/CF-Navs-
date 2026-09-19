@@ -9,7 +9,9 @@
 
 ## 1. 无阻塞，可直接开工
 
-当前没有无阻塞待办。
+| ID | 类型 | 优先 | 事项 | 下一步 | 详情 |
+| --- | --- | --- | --- | --- | --- |
+| REQ-01 | 功能 | P1 | 离屏搜索按钮 + 居中 Spotlight 命令面板（**已批准，进行中**） | 按 `plans/SPOTLIGHT_SEARCH_DEVELOPMENT.md` 四阶段实施；仅 `develop`，不合 `main` | 需求 `plans/SPOTLIGHT_SEARCH_REQUIREMENTS.md` / 开发 `plans/SPOTLIGHT_SEARCH_DEVELOPMENT.md` / RD REQ-01 |
 
 ## 2. 需要裁定
 
@@ -48,7 +50,6 @@
 
 | ID | 优先 | 事项 | 前置 | 详情 |
 | --- | --- | --- | --- | --- |
-| REQ-01 | P1 | 离屏搜索按钮 + 居中 Spotlight 命令面板 | 与顶部导航按钮对齐的改动必须串行；验收含焦点陷阱与键盘导航，需要 PROB-18c 的真实浏览器层 | RD REQ-01 |
 | REQ-04 | P1 | 弹窗打开信号 token + 用户手势读剪贴板预填 URL | 剪贴板必须在 transient activation 链路内，需 PROB-18c | RD REQ-04 |
 | REQ-05 | P1 | 预填后自动触发标题解析，3 秒节流 + 竞态保护 | 会使 API 契约里「仅 blur 触发」的描述过期，需同步 | RD REQ-05 |
 | REQ-02 | P2 | PC 操作胶囊 hover/focus 渐显，排序态恒显 | hover 与 reduced-motion 需 PROB-18c | RD REQ-02 |

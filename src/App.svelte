@@ -178,6 +178,10 @@
     if (spotlightOpen || anyBlockingModalOpen()) return
     if (currentView !== 'home' || !canSeeHome) return
     await ensureSearchSpotlightComponent()
+    // 懒加载是异步的：其间可能开了模态或切了视图/登出。加载完成后重新校验，
+    // 否则会与刚打开的模态并发出现，破坏 D-e 模态互斥与单槽滚动锁。
+    if (spotlightOpen || anyBlockingModalOpen()) return
+    if (currentView !== 'home' || !canSeeHome) return
     spotlightOpen = true
   }
 
@@ -198,7 +202,7 @@
   function handleGlobalKeyDown(event: KeyboardEvent): void {
     const target = event.target as HTMLElement | null
     const typing = Boolean(target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable))
-    if (event.isComposing || typing) return
+    if (event.isComposing || event.key === 'Process' || typing) return
     if (currentView !== 'home' || !canSeeHome) return
 
     if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {

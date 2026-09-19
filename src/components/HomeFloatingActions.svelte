@@ -1,6 +1,5 @@
 <script lang="ts">
   import { onMount } from 'svelte'
-  import { fade } from 'svelte/transition'
   import type { ThemeMode } from '../../shared/types'
 
   type AsyncVoid<T = void> = T | Promise<T>
@@ -22,7 +21,6 @@
   export let onOpenSearch: (() => AsyncVoid) | undefined = undefined
 
   let showBackToTop = false
-  let prefersReducedMotion = false
   let isMac = false
   // 搜索框离屏时显示；`search_box_show=false` 时恒显，保证仍有搜索入口（REQ-01 / FR-1.2）。
   $: showSearchButton = !searchBoxVisible || !searchBoxShow
@@ -112,7 +110,6 @@
     window.addEventListener('scroll', updateBackToTopVisibility, { passive: true })
 
     if (typeof window !== 'undefined') {
-      prefersReducedMotion = Boolean(window.matchMedia?.('(prefers-reduced-motion: reduce)').matches)
       const platform =
         (navigator as Navigator & { userAgentData?: { platform?: string } }).userAgentData?.platform ??
         navigator.platform ??
@@ -145,23 +142,23 @@
     </svg>
   </button>
   <div class="actions-group" id={menuId} bind:this={menuGroup}>
-    {#if showSearchButton}
-      <button
-        type="button"
-        class="icon-button search-fab"
-        data-testid="home-search-button"
-        on:click={handleOpenSearch}
-        transition:fade={{ duration: prefersReducedMotion ? 0 : 160 }}
-        title={`搜索书签 (${searchShortcutHint})`}
-        aria-label="搜索书签"
-        aria-keyshortcuts="Control+K Meta+K"
-      >
-        <svg viewBox="0 0 24 24" aria-hidden="true">
-          <circle cx="11" cy="11" r="7" />
-          <path d="m20 20-3.5-3.5" />
-        </svg>
-      </button>
-    {/if}
+    <button
+      type="button"
+      class="icon-button search-fab"
+      class:is-visible={showSearchButton}
+      data-testid="home-search-button"
+      on:click={handleOpenSearch}
+      title={`搜索书签 (${searchShortcutHint})`}
+      aria-label="搜索书签"
+      aria-hidden={!showSearchButton}
+      tabindex={showSearchButton ? undefined : -1}
+      aria-keyshortcuts="Control+K Meta+K"
+    >
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <circle cx="11" cy="11" r="7" />
+        <path d="m20 20-3.5-3.5" />
+      </svg>
+    </button>
     <button
       type="button"
       class="icon-button theme-toggle-button"
@@ -336,6 +333,22 @@
     color: #2563eb;
     border-color: rgba(37, 99, 235, 0.5);
     background: rgba(219, 234, 254, 0.92);
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: opacity var(--transition-base), visibility var(--transition-base);
+  }
+
+  .search-fab.is-visible {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .search-fab {
+      transition: none;
+    }
   }
 
   .search-fab:hover:not(:disabled) {

@@ -3,10 +3,8 @@
   import { get } from 'svelte/store'
   import { fade } from 'svelte/transition'
   import {
-    type Bookmark,
     type BookmarkBatchMoveReq,
     type BookmarkReorganizeReq,
-    type Category,
     type ChangePasswordReq,
     type Settings,
     type ThemeMode,
@@ -22,6 +20,7 @@
   import { toastStore } from './lib/toast'
   import type { AdminTab, BookmarkFormValue, CategoryFormValue } from './lib/adminTypes'
   import { toBookmarkForm, toBookmarkPayload, toCategoryForm, toCategoryPayload } from './lib/adminFormAdapters'
+  import { runAdminMutation } from './lib/appAdminMutation'
   import { logoutRevocationWarning } from './lib/appAuthController'
   import {
     createImportExportState,
@@ -697,33 +696,32 @@
     savingCategory = true
     categoryError = ''
 
-    try {
-      let category: Category
-      if (isEdit) {
-        category = await api.categories.update(Number(form.id), toCategoryPayload(form))
-      } else {
-        category = await api.categories.create(toCategoryPayload(form))
-      }
-
-      resetCategoryState()
-      await applyLocalCategoryUpsert(category)
-      await refreshAdminDataAfterMutation()
-      if (returnToHome) {
-        currentView = 'home'
-        homeFocusCategoryId = null
-        await tick()
-        homeFocusCategoryId = category.id
-        await tick()
-      }
-      toastStore.addToast(
+    await runAdminMutation({
+      run: () =>
+        isEdit
+          ? api.categories.update(Number(form.id), toCategoryPayload(form))
+          : api.categories.create(toCategoryPayload(form)),
+      onSuccess: async (category) => {
+        resetCategoryState()
+        await applyLocalCategoryUpsert(category)
+        await refreshAdminDataAfterMutation()
+        if (returnToHome) {
+          currentView = 'home'
+          homeFocusCategoryId = null
+          await tick()
+          homeFocusCategoryId = category.id
+          await tick()
+        }
+      },
+      successMessage: (category) =>
         isEdit ? `分类「${category.title}」已更新` : `分类「${category.title}」已创建`,
-        'success',
-      )
-    } catch (error) {
-      categoryError = getErrorMessage(error)
-    } finally {
-      savingCategory = false
-    }
+      onError: (message) => {
+        categoryError = message
+      },
+      onSettled: () => {
+        savingCategory = false
+      },
+    })
   }
   async function handleSubmitCategory(form: CategoryFormValue): Promise<void> {
     await submitCategoryUseCase(form)
@@ -740,19 +738,23 @@
     ))
     if (!confirmed) return
 
-    deletingCategoryId = Number(category.id)
+    deletingCategoryId = categoryId
     categoryError = ''
 
-    try {
-     await api.categories.remove(categoryId)
-     await applyLocalCategoryDelete(categoryId)
-      await refreshAdminDataAfterMutation()
-      toastStore.addToast(`分类「${category.title}」已删除`, 'success')
-   } catch (error) {
-     categoryError = getErrorMessage(error)
-    } finally {
-      deletingCategoryId = null
-    }
+    await runAdminMutation({
+      run: () => api.categories.remove(categoryId),
+      onSuccess: async () => {
+        await applyLocalCategoryDelete(categoryId)
+        await refreshAdminDataAfterMutation()
+      },
+      successMessage: () => `分类「${category.title}」已删除`,
+      onError: (message) => {
+        categoryError = message
+      },
+      onSettled: () => {
+        deletingCategoryId = null
+      },
+    })
   }
 
   async function handleOpenCreateBookmark(categoryId?: string | number): Promise<void> {
@@ -807,71 +809,80 @@
     savingBookmark = true
     bookmarkError = ''
 
-    try {
-      let bookmark: Bookmark
-      if (isEdit) {
-        bookmark = await api.bookmarks.update(Number(form.id), toBookmarkPayload(form))
-      } else {
-        bookmark = await api.bookmarks.create(toBookmarkPayload(form))
-      }
-
-      resetBookmarkState()
-      await applyLocalBookmarkUpsert(bookmark)
-      await refreshAdminDataAfterMutation()
-     refreshBookmarkIconCacheInBackground(bookmark.id)
-      toastStore.addToast(
+    await runAdminMutation({
+      run: () =>
+        isEdit
+          ? api.bookmarks.update(Number(form.id), toBookmarkPayload(form))
+          : api.bookmarks.create(toBookmarkPayload(form)),
+      onSuccess: async (bookmark) => {
+        resetBookmarkState()
+        await applyLocalBookmarkUpsert(bookmark)
+        await refreshAdminDataAfterMutation()
+        refreshBookmarkIconCacheInBackground(bookmark.id)
+      },
+      successMessage: (bookmark) =>
         isEdit ? `书签「${bookmark.title}」已更新` : `书签「${bookmark.title}」已创建`,
-        'success',
-      )
-   } catch (error) {
-     bookmarkError = getErrorMessage(error)
-    } finally {
-      savingBookmark = false
-    }
+      onError: (message) => {
+        bookmarkError = message
+      },
+      onSettled: () => {
+        savingBookmark = false
+      },
+    })
   }
 
   async function handleDeleteBookmark(bookmark: { id: string | number; title: string }): Promise<void> {
     const confirmed = await requestConfirmation(createDeleteBookmarkConfirmation(bookmark.title))
     if (!confirmed) return
 
-    deletingBookmarkId = Number(bookmark.id)
+    const bookmarkId = Number(bookmark.id)
+    deletingBookmarkId = bookmarkId
     bookmarkError = ''
 
-    try {
-      const bookmarkId = Number(bookmark.id)
-      await api.bookmarks.remove(bookmarkId)
-      resetBookmarkState()
-     await applyLocalBookmarkDelete(bookmarkId)
-     await refreshAdminDataAfterMutation()
-      toastStore.addToast(`书签「${bookmark.title}」已删除`, 'success')
-   } catch (error) {
-     bookmarkError = getErrorMessage(error)
-    } finally {
-      deletingBookmarkId = null
-    }
+    await runAdminMutation({
+      run: () => api.bookmarks.remove(bookmarkId),
+      onSuccess: async () => {
+        resetBookmarkState()
+        await applyLocalBookmarkDelete(bookmarkId)
+        await refreshAdminDataAfterMutation()
+      },
+      successMessage: () => `书签「${bookmark.title}」已删除`,
+      onError: (message) => {
+        bookmarkError = message
+      },
+      onSettled: () => {
+        deletingBookmarkId = null
+      },
+    })
   }
 
   async function handleBatchDeleteBookmarks(ids: number[]): Promise<void> {
     if (ids.length === 0) return
     if (!await requestConfirmation(createBatchDeleteConfirmation('bookmark', ids.length))) return
-    try {
-      const result = await api.bookmarks.batchDelete(ids)
-      if (result.deleted > 0) await refreshAdminDataAfterMutation()
-      toastStore.addToast(`已删除 ${result.deleted} 个书签`, 'success')
-    } catch (error) {
-      bookmarkError = getErrorMessage(error)
-    }
+
+    await runAdminMutation({
+      run: () => api.bookmarks.batchDelete(ids),
+      onSuccess: async (result) => {
+        if (result.deleted > 0) await refreshAdminDataAfterMutation()
+      },
+      successMessage: (result) => `已删除 ${result.deleted} 个书签`,
+      onError: (message) => {
+        bookmarkError = message
+      },
+    })
   }
   async function handleBatchMoveBookmarks(payload: BookmarkBatchMoveReq): Promise<void> {
     bookmarkError = ''
-    try {
-      const result = await api.bookmarks.batchMove(payload)
-      await refreshAdminDataAfterMutation()
-      toastStore.addToast(`已移动 ${result.moved} 个书签`, 'success')
-    } catch (error) {
-      bookmarkError = getErrorMessage(error)
-      throw error
-    }
+
+    await runAdminMutation({
+      run: () => api.bookmarks.batchMove(payload),
+      onSuccess: () => refreshAdminDataAfterMutation(),
+      successMessage: (result) => `已移动 ${result.moved} 个书签`,
+      onError: (message) => {
+        bookmarkError = message
+      },
+      rethrow: true,
+    })
   }
 
   async function handleBatchDeleteCategories(ids: number[]): Promise<void> {
@@ -881,28 +892,34 @@
       category.parent_id != null && ids.includes(category.parent_id)
     )).length
     if (!await requestConfirmation(createBatchDeleteConfirmation('category', ids.length, bookmarkCount, childCategoryCount))) return
-    try {
-      const result = await api.categories.batchDelete(ids)
-      if (result.deleted > 0 || result.deleted_bookmarks > 0) await refreshAdminDataAfterMutation()
-      toastStore.addToast(`已删除 ${result.deleted} 个分类及 ${result.deleted_bookmarks} 个书签`, 'success')
-    } catch (error) {
-      categoryError = getErrorMessage(error)
-    }
+
+    await runAdminMutation({
+      run: () => api.categories.batchDelete(ids),
+      onSuccess: async (result) => {
+        if (result.deleted > 0 || result.deleted_bookmarks > 0) await refreshAdminDataAfterMutation()
+      },
+      successMessage: (result) => `已删除 ${result.deleted} 个分类及 ${result.deleted_bookmarks} 个书签`,
+      onError: (message) => {
+        categoryError = message
+      },
+    })
   }
 
   async function handleSubmitSettings(payload: SettingsSubset): Promise<void> {
     savingSettings = true
     settingsError = ''
 
-    try {
-      const settings = await api.settings.update(payload)
-     await applyLocalSettings(settings)
-      toastStore.addToast('设置已保存', 'success')
-   } catch (error) {
-     settingsError = getErrorMessage(error)
-    } finally {
-      savingSettings = false
-    }
+    await runAdminMutation({
+      run: () => api.settings.update(payload),
+      onSuccess: (settings) => applyLocalSettings(settings),
+      successMessage: () => '设置已保存',
+      onError: (message) => {
+        settingsError = message
+      },
+      onSettled: () => {
+        savingSettings = false
+      },
+    })
   }
 
   async function handleChangePassword(payload: ChangePasswordReq): Promise<void> {

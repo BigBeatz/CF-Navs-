@@ -7,6 +7,13 @@
 
 ## [Unreleased]
 
+### 后台增删改编排收敛到 runAdminMutation（PROB-24）
+
+- `src/App.svelte` 里分类 / 书签 / 设置的创建、编辑、删除、批量删除、批量移动共 8 个处理器各自重复的 `try/catch/finally + 成功 Toast + 刷新` 样板，收敛到新的纯编排函数 `src/lib/appAdminMutation.ts` 的 `runAdminMutation`（对齐既有 `runOptimisticSort` 的「纯函数 + 回调选项」约定）。行为不变：成功文案、busy 标记清理时机、批量条件刷新、`handleBatchMoveBookmarks` 的失败重抛、设置提交不触发数据刷新等逐条保持。
+- 只做这一块编排收敛，未触碰安装 / 引导、鉴权、排序、reorganize 等其余处理器。
+- 新增 `tests/unit/appAdminMutation.test.ts` 断言 run→onSuccess→成功 Toast 的顺序、run 与 onSuccess 抛错统一落 onError、rethrow 重抛原始错误、successMessage 返回空串不弹 Toast、onSettled 恒执行；`tests/unit/confirmationFlow.test.ts` 一条随调用形态改变而失效的源码文本断言改为形态无关的接线存在性检查。
+- 验证：L0 类型检查 0 errors / 0 warnings、`npm test` 121 files / 903 tests 全通过、生产构建成功。App.svelte 组件层的 L2 浏览器回归未跑（无可达实例与管理员凭据），进发版前清单。
+
 ### 详情卡片列宽缺失回退补齐到 160px（refs #22）
 
 - v0.5.1 只把数据层默认（schema seed、`CARD_SIZE_DEFAULTS`、Home 兜底）改为 160px，组件与 CSS 层仍残留 200px 兜底：`CategorySection` / `BookmarkCard` 的 width prop 默认、两张卡片的网格与外壳 CSS fallback、`getInfoCardTrackWidth` 的非有限输入回落。本轮把这 5 处全部统一到 160px，使首次部署或缺失设置时详情卡列宽下限与共享默认一致；用户显式保存的宽度不迁移。

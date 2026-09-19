@@ -7,6 +7,14 @@
 
 ## [Unreleased]
 
+### 后台公开对象图标改用匿名代理 URL 恢复共享缓存（PROB-35）
+
+- 后台分类 / 书签 / 访问分析三个面板此前无条件给所有对象代理图标 URL 附加授权 `key`，使公开对象的响应也变成 `private, no-store`、丢失 edge / 浏览器 / 分类 Service Worker 缓存，每次渲染都为每个图标回源一次外站。本轮按「有效可见性」分流：公开对象改用不带 `key` 的匿名 `/api/{icon,category-icon}/:id?v=...`（恢复共享缓存），有效私密对象继续带签名 `key`。
+- 有效私密判定复用既有前端镜像 `getHiddenCategoryIds`（与 Worker `getPublicCategoryIds` 由 `tests/unit/publicVisibility.test.ts` 交叉断言，覆盖私密祖先链与循环链）：分类看自身是否落入 hidden 集，书签看 `is_private` 或所属分类是否落入 hidden 集——覆盖「公开子分类挂私密根下」「公开书签在私密分类树下」两种 Worker 匿名拒绝条件。
+- 不改 Worker 判定顺序、缓存命名空间、TTL、`no-store` 边界与 `withIconAccessKey` 签名；首页公开卡片本就不带 `key`，未受影响。
+- 新增 `tests/unit/adminIconAccess.test.ts`：三个面板 mount 后断言渲染 `<img src>` 的 key 分流（公开无 `key`、私密与私密树下对象带 `key`，含祖先链情形）。
+- 验证：L0 类型检查 0 errors / 0 warnings、`npm test` 122 files / 906 tests 全通过、生产构建成功。图标链路属缓存 / 性能相关：后台 L2 浏览器分流与推送后的 L3（真实 edge/SW 命中、`perf:audit` 图标请求与 Cache Storage 预算）未跑，进发版前清单。
+
 ### 后台增删改编排收敛到 runAdminMutation（PROB-24）
 
 - `src/App.svelte` 里分类 / 书签 / 设置的创建、编辑、删除、批量删除、批量移动共 8 个处理器各自重复的 `try/catch/finally + 成功 Toast + 刷新` 样板，收敛到新的纯编排函数 `src/lib/appAdminMutation.ts` 的 `runAdminMutation`（对齐既有 `runOptimisticSort` 的「纯函数 + 回调选项」约定）。行为不变：成功文案、busy 标记清理时机、批量条件刷新、`handleBatchMoveBookmarks` 的失败重抛、设置提交不触发数据刷新等逐条保持。

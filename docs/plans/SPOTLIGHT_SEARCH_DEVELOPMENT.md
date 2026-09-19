@@ -222,3 +222,12 @@ function handleGlobalKeyDown(event: KeyboardEvent) {
 - L2：隔离 Chrome 截图 + 控制台/页面异常/失败请求记录（焦点陷阱、模态互斥、Esc 层级、`open_method=3` 交接、移动端、z-index 叠放）。
 - L3：`perf:audit` JSON（9 项 + 50 条场景图标数）、首页防抖 gate 未回归、C-9 grep 结果。
 - 独立复核裁决（阶段 3）。
+
+## 12. 交付闭环证据（2026-09-19）
+
+- 提交（均在 `develop`，不合 `main`）：阶段1 `7d408a5`（抽 `pageScrollLock` + 单测）、阶段2 `79a3e1f`（离屏可见性 + 搜索按钮）、阶段3 `57a2736`（`SearchSpotlight` + App 集成 + 单测）、复核收敛 `0bafc83`（F1 竞态二次校验 / F2 CSS 令牌过渡 / F4 IME `Process`）、`826dd12`（消除隐藏态按钮组空槽回归）。
+- L0：`type-check` 311 files 0/0；`npm test` 125 files / 923 tests 全通过；`npm run build` 成功。
+- L2（隔离临时 Chrome，按精确 profile 清理）：REQ-01 场景 25/25 —— 滚动进出搜索按钮、`Ctrl/Cmd+K` 唤起、居中命令面板、结果字母头像占位（`<img>` 0 请求）、`open_method` 1/2/3、Esc/Tab/焦点还原、模态互斥（登录开时 `Ctrl+K` 被拦）、移动端窄视口无溢出；控制台错误/页面异常/一方 4xx-5xx 均 0。
+- L3：`npm run perf:audit` 全部预算通过（首页防抖 jank-immune 门禁 `immediateAfterLastKey=0`、图标请求 232 ≤ 260、Cache Storage 1.2 MiB ≤ 5 MiB、admin data 37540 ≤ 60000）+ Spotlight 50 条探针；C-9 未新增 `scroll` 监听（离屏检测走 `IntersectionObserver`）。
+- 独立复核（`workflow-reviewer`）：第一轮 `CHANGES_REQUIRED`（F1 懒加载竞态 / F2 字面时长 / F3 私密书签口径质疑 / F4 IME）→ fix-forward `0bafc83`；第二轮 `CHANGES_REQUIRED`（F1/F4 收敛、F3 非缺陷判定成立、F2 引入隐藏态按钮组空槽回归）→ fix-forward `826dd12`。F3 经核验非缺陷：Home 与 Spotlight 共用同一 `publicData.bookmarks`，匿名端 `getPublicDataSource(includePrivate=false)` 已排除私密书签与私密分类树，展示范围与首页一致、无新增暴露面。
+- 未验证：fix-forward `0bafc83`/`826dd12` 尚未在部署环境做 L2 观感复测（CSS 过渡与空槽消除的真实浏览器确认待 `develop` 部署后补跑；L0 与既有 L2/L3 已覆盖功能与预算）。

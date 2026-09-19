@@ -9,9 +9,7 @@
 
 ## 1. 无阻塞，可直接开工
 
-| ID | 类型 | 优先 | 事项 | 下一步 | 详情 |
-| --- | --- | --- | --- | --- | --- |
-| REQ-01 | 功能 | P1 | 离屏搜索按钮 + 居中 Spotlight 命令面板（**已批准，进行中**） | 按 `plans/SPOTLIGHT_SEARCH_DEVELOPMENT.md` 四阶段实施；仅 `develop`，不合 `main` | 需求 `plans/SPOTLIGHT_SEARCH_REQUIREMENTS.md` / 开发 `plans/SPOTLIGHT_SEARCH_DEVELOPMENT.md` / RD REQ-01 |
+当前没有可直接开工的条目。
 
 ## 2. 需要裁定
 

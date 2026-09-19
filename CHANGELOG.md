@@ -7,6 +7,14 @@
 
 ## [Unreleased]
 
+### 新增离屏搜索按钮与居中 Spotlight 命令面板（REQ-01）
+
+- 首页搜索框滚出视口后，右上浮动操作组出现搜索按钮（`search_box_show=false` 时恒显，保证始终有搜索入口）；点击按钮或全局 `Ctrl/Cmd+K`、`/` 唤起居中命令面板 `SearchSpotlight.svelte`，`Esc` 关闭。面板即时过滤，结果范围与首页完全一致（共用同一 `publicData.bookmarks`），空查询展示常用书签，上限 50 条，键盘上下/回车选中、回车打开书签详情。
+- 组件懒加载（`ensureSearchSpotlightComponent`）；`openSpotlight` 在 await 加载前后各校验一次 `spotlightOpen / anyBlockingModalOpen / currentView / canSeeHome`，与登录/分类/书签/确认框/详情卡互斥（D-e），共用单槽滚动锁 `src/lib/pageScrollLock.ts`（从 `BookmarkEditModal` 抽出，单实例保存/恢复 `overflow`）。全局 keydown 守卫排除输入态与 IME（`isComposing`、`event.key === 'Process'`）。
+- 离屏可见性由 `src/lib/searchBoxVisibility.ts`（IntersectionObserver，无 IO 时回退为可见）观测 `.hero-search`，Home 订阅透传给浮动操作组。搜索按钮常驻 DOM，用 `class:is-visible` + `opacity/visibility` 过渡（走 `--transition-base` 令牌，无字面时长，`prefers-reduced-motion` 关闭过渡）；隐藏态 `aria-hidden` + `tabindex=-1` 不可聚焦，并以 `position:absolute` 移出 flex 流避免按钮组空槽。
+- 新增单测 `pageScrollLock.test.ts`、`searchBoxVisibility.test.ts`、`searchSpotlight.test.ts`、`homeFloatingActions.test.ts`（离屏按钮可见性/可聚焦/无障碍名与快捷键）。
+- 验证：L0 类型检查 311 files 0/0、`npm test` 125 files / 923 tests 全通过、生产构建成功；L2 真实 Chrome 25/25（滚动进出按钮、Ctrl+K 唤起、居中面板、字母头像占位无图标请求、模态互斥、移动端无溢出）；L3 `perf:audit` 全部预算通过（含首页防抖 jank-immune 门禁、图标请求 232 ≤ 260、缓存 1.2 MiB ≤ 5 MiB）+ Spotlight 50 条探针。独立复核就竞态/过渡/IME/布局空槽提出四轮意见，均已 fix-forward 收敛。
+
 ### 关闭 PROB-36：首页搜索防抖复核为测量伪影，perf:audit 门禁时序加固
 
 - 复核结论：首页搜索**不缺防抖**。`src/views/Home.svelte` 既有 120ms 尾沿防抖（`SEARCH_FILTER_DEBOUNCE_MS` + `scheduleSearchFilterUpdate`），书签过滤/列表重渲染只读防抖后的 `deferredSearchQuery`；隔离 Chrome 正常负载复测 3/3，连打 `n`/`np`/`npm`（间隔 ~46ms < 120ms）settle 前 **0 次 mutation**，防抖窗过后一次重建（7 records）。

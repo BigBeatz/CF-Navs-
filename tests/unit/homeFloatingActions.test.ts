@@ -183,3 +183,29 @@ describe('移动端折叠菜单', () => {
     expect(source).toContain('below-top-navigation .actions-menu-trigger')
   })
 })
+
+describe('离屏搜索按钮（REQ-01）', () => {
+  it('搜索框离屏时渲染搜索按钮，带无障碍名与快捷键', () => {
+    render(HomeFloatingActions, { props: { searchBoxVisible: false, searchBoxShow: true } })
+    const button = screen.getByTestId('home-search-button')
+    expect(button.getAttribute('aria-label')).toBe('搜索书签')
+    expect(button.getAttribute('aria-keyshortcuts')).toBe('Control+K Meta+K')
+  })
+
+  it('搜索框在视口内时不渲染搜索按钮', () => {
+    render(HomeFloatingActions, { props: { searchBoxVisible: true, searchBoxShow: true } })
+    expect(screen.queryByTestId('home-search-button')).toBeNull()
+  })
+
+  it('search_box_show=false 时恒显搜索按钮（否则没有搜索入口）', () => {
+    render(HomeFloatingActions, { props: { searchBoxVisible: true, searchBoxShow: false } })
+    expect(screen.queryByTestId('home-search-button')).not.toBeNull()
+  })
+
+  it('点击搜索按钮调用 onOpenSearch', async () => {
+    const onOpenSearch = vi.fn()
+    render(HomeFloatingActions, { props: { searchBoxVisible: false, onOpenSearch } })
+    await fireEvent.click(screen.getByTestId('home-search-button'))
+    expect(onOpenSearch).toHaveBeenCalledTimes(1)
+  })
+})

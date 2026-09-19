@@ -7,6 +7,12 @@
 
 ## [Unreleased]
 
+### 关闭 PROB-19v：登出撤销的会话存储失败分支闭环
+
+- 登出撤销的 `store_unavailable` 分支（`worker/routes/auth.ts` 的 `POST /logout`：`SESSION` 绑定存在但 `revokeSession` 写入抛错时返回 `{revoked:false, reason:'store_unavailable'}`、HTTP 200 且不谎称撤销成功）已由 `tests/unit/sessionRevocation.test.ts` 路由级单测覆盖——注入 `put` 抛错的 KV，断言响应体，并与 `store_unconfigured`（缺绑定）区分。
+- happy path（登出后旧 token 在 15 秒窗口内被拒）三次生产实测 178 ms / 212 ms / 216 ms，均远低于窗口。生产 KV 故障注入不可行且不必要，失败分支的可观察契约已由单测闭环。据此从 `docs/BACKLOG.md` §3 移除，正式关闭。
+- 本次为文档 / 状态收尾，未改源码或测试；`sessionRevocation.test.ts` 复跑 11/11 通过。
+
 ### 后台公开对象图标改用匿名代理 URL 恢复共享缓存（PROB-35）
 
 - 后台分类 / 书签 / 访问分析三个面板此前无条件给所有对象代理图标 URL 附加授权 `key`，使公开对象的响应也变成 `private, no-store`、丢失 edge / 浏览器 / 分类 Service Worker 缓存，每次渲染都为每个图标回源一次外站。本轮按「有效可见性」分流：公开对象改用不带 `key` 的匿名 `/api/{icon,category-icon}/:id?v=...`（恢复共享缓存），有效私密对象继续带签名 `key`。

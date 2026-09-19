@@ -7,6 +7,12 @@
 
 ## [Unreleased]
 
+### 关闭 PROB-36：首页搜索防抖复核为测量伪影，perf:audit 门禁时序加固
+
+- 复核结论：首页搜索**不缺防抖**。`src/views/Home.svelte` 既有 120ms 尾沿防抖（`SEARCH_FILTER_DEBOUNCE_MS` + `scheduleSearchFilterUpdate`），书签过滤/列表重渲染只读防抖后的 `deferredSearchQuery`；隔离 Chrome 正常负载复测 3/3，连打 `n`/`np`/`npm`（间隔 ~46ms < 120ms）settle 前 **0 次 mutation**，防抖窗过后一次重建（7 records）。
+- 上轮 L3 `perf:audit` 报出的 16 次 mutation 是测量伪影：那次运行全程 ~294s（约 10 倍负载），固定 45ms 的按键间隔被主线程拖到超过 120ms 防抖窗，防抖在打字途中触发了一次重建并计入 settle 前计数。
+- 工具加固（`scripts/perf-audit.mjs`）：`runHomeSearch` 改为记录每次按键真实时间戳与 mutation 批次，门禁只断言「最后一次按键后 60ms 判定窗内无立即重渲染」（未防抖实现会在一个 tick 内命中，卡顿不影响判定）；另报 `rebuiltAfterSettle` 正向佐证搜索链路在工作。复跑 `npm run perf:audit` 该项通过（`immediateAfterLastKey=0`，gaps 55/45ms，settle 后 7 records），其余 9 项预算同轮通过（图标请求 232 ≤ 260、缓存 1.2 MiB ≤ 5 MiB、首页 0 破图、一方请求失败 0）。
+
 ### 关闭 PROB-19v：登出撤销的会话存储失败分支闭环
 
 - 登出撤销的 `store_unavailable` 分支（`worker/routes/auth.ts` 的 `POST /logout`：`SESSION` 绑定存在但 `revokeSession` 写入抛错时返回 `{revoked:false, reason:'store_unavailable'}`、HTTP 200 且不谎称撤销成功）已由 `tests/unit/sessionRevocation.test.ts` 路由级单测覆盖——注入 `put` 抛错的 KV，断言响应体，并与 `store_unconfigured`（缺绑定）区分。

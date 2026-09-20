@@ -21,8 +21,8 @@ function check(name, cond, detail = '') {
   }
 }
 
-async function call(path, { method = 'GET', token, body } = {}) {
-  const headers = { accept: 'application/json' }
+async function call(path, { method = 'GET', token, body, headers: extraHeaders } = {}) {
+  const headers = { accept: 'application/json', ...extraHeaders }
   if (body !== undefined) headers['content-type'] = 'application/json'
   if (token) headers['authorization'] = `Bearer ${token}`
   const res = await fetch(`${BASE}${path}`, {

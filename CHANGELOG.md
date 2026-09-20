@@ -7,6 +7,8 @@
 
 ## [Unreleased]
 
+## v0.7.0 — 2026-09-20
+
 ### 新增管理员密码恢复端点 `/api/recover`（REQ-14，Issue #24）
 
 - 新增免登录的 `POST /api/recover`：已安装实例上用部署者持有的 `SETUP_TOKEN`（请求头 `X-Setup-Token`，常量时间比较）+ 同源校验 + `install_rate_limits` 表 `recover:<ip>` 独立命名空间限流，重置管理员密码而无需重新部署。**只重置密码、不改用户名**；新密码须 8–12 位且至少含小写/大写/数字/符号中的两类（恢复端点专用策略，与 `/install` 的 12–256 不同）。
@@ -17,6 +19,15 @@
 - 文档：`docs/reference/API_CONTRACT.md` 补 `POST /api/recover` 契约；`docs/guides/DEPLOYMENT.md`、`docs/guides/TROUBLESHOOTING.md` 恢复路径重排为三级（账号安全改密 → `/recover` → `INIT_ADMIN_*`/`RESET_ADMIN_CREDENTIALS` 重部署兜底）。
 - 追加：部署密钥非 ASCII 字符前端校验——`src/lib/setupTokenInput.ts` 的 `isAsciiPrintableToken`（可见 ASCII 0x20–0x7E）接入 `Recover.svelte` 与 `Install.svelte`，含全角字符（如全角 `￥`）的令牌在提交前被拦下并给友好提示，不再暴露浏览器 `Headers` 构造的原始 `TypeError`。根因：HTTP 头值限 ISO-8859-1，`SETUP_TOKEN` 含非 ASCII 会让 `X-Setup-Token` 头无法构造。
 - 验证：L0 `type-check` 316 files 0/0、`npm test` 948 tests、build 成功；单测 `recover.test.ts` 14/14、`recoverView.test.ts` 7/7、`setupTokenInput.test.ts` 4/4；L1 `npm run smoke` 83/83（恢复成功、错误/缺令牌 401、弱密码 1002、新密码可登录、旧密码被拒）。**部署后真实浏览器 L2 已完成**（`develop` 生产站点，ASCII 令牌 `123456#$%@ss`）：`/recover` 页面渲染（无用户名字段）、客户端密码校验、全角令牌被拦并显示友好提示；正向 round-trip 成功——恢复重置密码后旧密码失效、预置会话经 `rotateJwtSecret` 失效（`/api/me`→401），随后经 `/api/password` 还原原密码、站点状态复原。独立 `workflow-reviewer` 复核 PASS（低 severity 的 schema-less→`not installed` 已修）。Issue #24 在提交进默认分支并最终确认前保持 Open。
+
+### 密码重置操作说明（使用手册）
+
+- **适用场景**：管理员忘记密码，且 `INIT_ADMIN_*` 初始密码校验无法直接登录时，可用 `/recover` 免登录重置。
+- **你需要**：部署者持有的部署密钥 `SETUP_TOKEN`。Cloudflare 用户在「控制台 → 设置 → 变量和密钥 → 生产环境」查看或轮换（轮换后重新部署生效）；本地实例经 `wrangler dev --var SETUP_TOKEN:...` 或 `.dev.vars` 注入。
+- **操作步骤**：打开站点 `/recover`（或登录弹窗「忘记密码？」入口）→ 输入部署密钥 → 输入新密码（8–12 位，须同时包含小写、大写、数字、符号中的两类）→ 提交。成功后立即回到登录态。
+- **生效范围**：只重置密码、不改用户名；同时轮换 JWT secret，全部旧会话立即失效、需重新登录；刻意保留 `admin_bootstrap_password` 快照，不影响后续 `INIT_ADMIN_PASSWORD` 的一致性校验（登录时若检测到该快照与初始密码一致会判定「初始化凭据未变」）。
+- **错误语义**：未安装实例返回 `code=1002 not installed`；令牌缺失/错误返回真实 HTTP 401；跨域请求 403；连续失败按 IP 独立限流（`HTTP 200 + code` 包络）。
+- **兜底链路**（改密偏好顺序）：后台「账号安全」改密 → `/recover` 页面 → 重新部署（以新 `INIT_ADMIN_*` 或 `RESET_ADMIN_CREDENTIALS` 环境变量覆盖后首次登录回写）。
 
 ### 后台管理界面审计整改 P0（对比度 / 焦点环 / 主题基建）
 

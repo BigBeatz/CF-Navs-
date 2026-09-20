@@ -7,6 +7,51 @@
 
 ## [Unreleased]
 
+## v0.7.0 — 2026-09-20
+
+### 新增管理员密码恢复端点 `/api/recover`（REQ-14，Issue #24）
+
+- 新增免登录的 `POST /api/recover`：已安装实例上用部署者持有的 `SETUP_TOKEN`（请求头 `X-Setup-Token`，常量时间比较）+ 同源校验 + `install_rate_limits` 表 `recover:<ip>` 独立命名空间限流，重置管理员密码而无需重新部署。**只重置密码、不改用户名**；新密码须 8–12 位且至少含小写/大写/数字/符号中的两类（恢复端点专用策略，与 `/install` 的 12–256 不同）。
+- 成功只更新 `settings.admin_password` 并轮换 JWT secret 作废全部旧会话，返回 `LoginResp` 直接进入登录态；**刻意保留 `admin_bootstrap_password` 快照**——把它同步成新哈希会让未变的 `INIT_ADMIN_PASSWORD` 在下一次登录被判定为「初始化凭据变化」并回滚本次重置（该错误由 L1 smoke 场景发现并纠正）。未安装实例返回 `code=1002 not installed`，错误/未配置令牌返回真实 401，跨域 403，限流/密码校验走 `HTTP 200 + code` 包络。
+- 忘记原 `SETUP_TOKEN` 时可在 Cloudflare **设置 → 变量和密钥 → 生产环境** 新增/轮换该密钥后重新部署——令牌不落库、每次请求实时读环境值。
+- 重构：从 `worker/routes/install.ts` 抽出 `worker/lib/setupToken.ts`（`authorizeSetup` + `isSameOriginRequest`）与 `worker/lib/installRateLimit.ts`（限流四函数 + 常量，`client_key` 参数化），install 与 recover 共用、行为不变；admin 设置 key 常量从 `worker/lib/bootstrap.ts` 导出统一引用。
+- 前端：新增 `/recover` 页面 `src/views/Recover.svelte`（复刻安装页视觉，无用户名字段），`src/App.svelte` 挂载 `/recover` 路由分支，登录弹窗新增「忘记密码？」入口，`src/lib/api.ts` 补 `authApi.recover`，`shared/types.ts` 新增 `RecoverReq`。
+- 文档：`docs/reference/API_CONTRACT.md` 补 `POST /api/recover` 契约；`docs/guides/DEPLOYMENT.md`、`docs/guides/TROUBLESHOOTING.md` 恢复路径重排为三级（账号安全改密 → `/recover` → `INIT_ADMIN_*`/`RESET_ADMIN_CREDENTIALS` 重部署兜底）。
+- 追加：部署密钥非 ASCII 字符前端校验——`src/lib/setupTokenInput.ts` 的 `isAsciiPrintableToken`（可见 ASCII 0x20–0x7E）接入 `Recover.svelte` 与 `Install.svelte`，含全角字符（如全角 `￥`）的令牌在提交前被拦下并给友好提示，不再暴露浏览器 `Headers` 构造的原始 `TypeError`。根因：HTTP 头值限 ISO-8859-1，`SETUP_TOKEN` 含非 ASCII 会让 `X-Setup-Token` 头无法构造。
+- 验证：L0 `type-check` 316 files 0/0、`npm test` 948 tests、build 成功；单测 `recover.test.ts` 14/14、`recoverView.test.ts` 7/7、`setupTokenInput.test.ts` 4/4；L1 `npm run smoke` 83/83（恢复成功、错误/缺令牌 401、弱密码 1002、新密码可登录、旧密码被拒）。**部署后真实浏览器 L2 已完成**（`develop` 生产站点，ASCII 令牌 `123456#$%@ss`）：`/recover` 页面渲染（无用户名字段）、客户端密码校验、全角令牌被拦并显示友好提示；正向 round-trip 成功——恢复重置密码后旧密码失效、预置会话经 `rotateJwtSecret` 失效（`/api/me`→401），随后经 `/api/password` 还原原密码、站点状态复原。独立 `workflow-reviewer` 复核 PASS（低 severity 的 schema-less→`not installed` 已修）。Issue #24 在提交进默认分支并最终确认前保持 Open。
+
+### 密码重置操作说明（使用手册）
+
+- **适用场景**：管理员忘记密码，且 `INIT_ADMIN_*` 初始密码校验无法直接登录时，可用 `/recover` 免登录重置。
+- **你需要**：部署者持有的部署密钥 `SETUP_TOKEN`。Cloudflare 用户在「控制台 → 设置 → 变量和密钥 → 生产环境」查看或轮换（轮换后重新部署生效）；本地实例经 `wrangler dev --var SETUP_TOKEN:...` 或 `.dev.vars` 注入。
+- **操作步骤**：打开站点 `/recover`（或登录弹窗「忘记密码？」入口）→ 输入部署密钥 → 输入新密码（8–12 位，须同时包含小写、大写、数字、符号中的两类）→ 提交。成功后立即回到登录态。
+- **生效范围**：只重置密码、不改用户名；同时轮换 JWT secret，全部旧会话立即失效、需重新登录；刻意保留 `admin_bootstrap_password` 快照，不影响后续 `INIT_ADMIN_PASSWORD` 的一致性校验（登录时若检测到该快照与初始密码一致会判定「初始化凭据未变」）。
+- **错误语义**：未安装实例返回 `code=1002 not installed`；令牌缺失/错误返回真实 HTTP 401；跨域请求 403；连续失败按 IP 独立限流（`HTTP 200 + code` 包络）。
+- **兜底链路**（改密偏好顺序）：后台「账号安全」改密 → `/recover` 页面 → 重新部署（以新 `INIT_ADMIN_*` 或 `RESET_ADMIN_CREDENTIALS` 环境变量覆盖后首次登录回写）。
+
+### 后台管理界面审计整改 P0（对比度 / 焦点环 / 主题基建）
+
+- 由 web-design-guidelines / frontend-design / brand-guidelines / extract-design-system / theme-factory 五个前端技能驱动的只读审计，决策记录 `docs/plans/ADMIN_UI_REDESIGN_DEVELOPMENT.md`；本版本落地其 P0 批次。P1（站点设置布局拆分、单滚动、预览联动）与 L2/L3 浏览器验证欠账见该文档。
+- 对比度按 WCAG AA 复算收敛：浅色占位符 `#94a3b8→#64748b`（2.56→4.76）、暗色占位符 `#64748b→#94a3b8`（3.59→6.66）、后台徽标文字 `#64748b→#475569`（4.34→6.92）、浅色危险红 `#dc2626→#b91c1c`（4.41→5.91）。
+- 主题基建：`src/app.css` 补 `color-scheme: light` 与 `:root[data-theme='dark']{color-scheme:dark}`；`index.html` 内联脚本让 `theme-color` 随 `data-theme` 动态（暗 `#08111f` / 浅 `#f8fafc`，MutationObserver 监听）。
+- 消灭 token 漂移：`adminListPanels.css` 主按钮硬编码 `#2563eb/#fff` 收敛到 `var(--admin-accent)` + 新增 `--admin-accent-ink`（浅 `#ffffff` / 暗 `#0f172a`）。独立复核发现并修复 token 化引入的暗色主按钮对比度回归（白字 on `#7dd3fc` 仅 1.67:1），修复后浅 5.17 / 暗 10.71。
+- 焦点：10 个组件的 `input/textarea:focus{outline:none; ring}` 与 settingsSections.css 两处多选择器规则统一为 `:focus-visible`（BookmarkBaseFields 的 input/select/textarea 一并收敛），保留 3px 可见焦点替代环。
+- 验证：`npm run type-check` 315 files 0 errors / 0 warnings；`npm test` 128 files / 948 tests 全通过；`npm run build` 成功；`git diff --check` 干净。独立 Reviewer 两轮（首轮 CHANGES_REQUIRED 暗色主按钮回归 → 修复 → PASS）。L2 浏览器回归与 P1 布局整改未在本提交范围。
+
+### 后台管理界面审计整改 P1/P2（设置布局 / 暗色层级 / 无障碍）
+
+- 承接 `docs/plans/ADMIN_UI_REDESIGN_DEVELOPMENT.md` 的 P1/P2 批次（P0 已在上一节交付）。
+- 站点设置信息架构拆分：二级菜单 6→7，新增「高级与视觉」，把 `AdvancedSettingsSection`（背景 / 尺寸 / 卡片表面 / 分类标题视觉）从「外观与卡片」移出，后者只留配色方案与卡片风格。外观分区展开高级后此前编辑区内滚约 1149px（约 3.5 屏），拆分后单分区编辑区内滚为 0。
+- 设置页去三层嵌套滚动：`.settings-panel` 移除 `height: clamp(...)` 锁高与 `overflow: hidden`，编辑区不再自成滚动，交由外层 `.admin-content` 单一滚动；`.settings-preview-column` 改 `position: sticky` 桌面粘性跟随；`@media (max-width:1320px)` 收起为单列并让预览回落静态流。
+- 布局与导航小栅格：`.navigation-grid > .field`（显示位置）占整行，两个条件开关成对落在下一行，修复「分类分行显示」开关此前单独占一行、右侧留白的孤立感。
+- 自定义样式/脚本：三个 `textarea` 标签补 `HTML` / `CSS` / `JS` 单色 monospace 语言徽标。
+- 暗色层级按「表面色差优先于阴影」提亮：`--admin-card-bg` 由半透明 `rgba(15,23,42,0.6)` 改不透明 `#141f33`（与页底 `#08111f` 拉开亮度差）、`--admin-border` 0.22→0.26、`--admin-card-border` 0.2→0.26；正文 `#e5eefb` on `#141f33` ≈ 14:1。浅色 token 不动。
+- 动效收敛：移除 `AdminPageHeader` 图标按钮与设置二级菜单 hover 的 `translateY` 抬升，仅保留主保存按钮单点强调。
+- 无障碍：后台新增「跳到主内容」skip-link（标准 `:focus` 显现，`href="#admin-main"`），`.admin-content` 补 `id="admin-main"` + `tabindex="-1"`；分类 / 书签搜索框补 `aria-label`。
+- 焦点环 token 化：`src/app.css` 新增 `--focus-ring`（浅色保持原 `rgba(37,99,235,0.12)` 零回归，暗色改青色 `rgba(125,211,252,0.35)` 呼应强调色），11 处焦点环字面量收敛到该 token；顺带把 `LoginModal` 的 `input:focus` 补成 `:focus-visible`（P0 因该文件被并行任务占用而遗留，现已释放）。
+- 验证：`npm run type-check` 316 files 0/0；`npm test` 128 files / 948 tests 全通过（含随 IA 拆分与单滚动重构同步更新的 `adminSettingsLayout`/`adminSettingsBehavior`/`designTokens`）；`npm run build` 成功；`git diff --check` 干净。本地 `wrangler dev` 真实浏览器（1440 视窗）实测：二级菜单 7 项 / 7 列、预览列 `position: sticky`、面板 `overflow: visible`、四个设置分区编辑区内滚均为 0、语言徽标渲染、暗色卡片 `#141f33` 对页底层差明显、skip-link 接线正确。独立 `workflow-reviewer` 两轮（首轮 CHANGES_REQUIRED：一个菜单用例仍写「六个分区」→ 补「高级与视觉」并改名 → 复检 PASS）。未改动任何并行任务文件（仅 `src/` 与 `tests/`）。
+
+
 ## v0.6.0 — 2026-09-20
 
 功能版本。新增首页离屏搜索按钮与居中 Spotlight 命令面板（REQ-01）：`Ctrl/Cmd+K`、`/` 或浮动按钮唤起，即时检索、键盘导航、主题自适应，高亮项自动滚入可视区。同步收敛后台增删改编排（PROB-24）、后台公开对象图标恢复共享缓存（PROB-35），关闭 PROB-36（首页搜索防抖复核为测量伪影 + `perf:audit` 门禁时序加固）与 PROB-19v（登出撤销的会话存储失败分支），补齐详情卡片列宽缺失回退到 160px（refs #22）。部署来源为 `develop`。

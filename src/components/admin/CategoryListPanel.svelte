@@ -181,7 +181,7 @@
     <div class="admin-list-panel-header">
       <div>
         <p class="admin-panel-eyebrow">分类</p>
-        <div class="admin-title-row"><h2>分类列表</h2><div class="admin-bookmark-search-bar"><input type="text" data-testid="admin-category-search" placeholder="搜索分类…" value={search} on:input={handleSearchInput} /></div></div>
+        <div class="admin-title-row"><h2>分类列表</h2><div class="admin-bookmark-search-bar"><input type="text" data-testid="admin-category-search" aria-label="搜索分类" placeholder="搜索分类…" value={search} on:input={handleSearchInput} /></div></div>
       </div>
       <div class="admin-header-actions-row">
         {#if !sortMode}
@@ -382,7 +382,7 @@
     font: inherit;
   }
 
-  .admin-bookmark-search-bar input:focus {
+  .admin-bookmark-search-bar input:focus-visible {
     outline: 2px solid color-mix(in srgb, var(--admin-accent) 32%, transparent);
     outline-offset: 1px;
   }

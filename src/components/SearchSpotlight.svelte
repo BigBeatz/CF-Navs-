@@ -125,15 +125,19 @@
     if (event.key === 'ArrowDown') {
       event.preventDefault()
       activeIndex = (activeIndex + 1) % results.length
+      void scrollActiveOptionIntoView()
     } else if (event.key === 'ArrowUp') {
       event.preventDefault()
       activeIndex = (activeIndex - 1 + results.length) % results.length
+      void scrollActiveOptionIntoView()
     } else if (event.key === 'Home') {
       event.preventDefault()
       activeIndex = 0
+      void scrollActiveOptionIntoView()
     } else if (event.key === 'End') {
       event.preventDefault()
       activeIndex = results.length - 1
+      void scrollActiveOptionIntoView()
     } else if (event.key === 'Enter') {
       event.preventDefault()
       const bookmark = results[activeIndex]
@@ -143,6 +147,14 @@
 
   function categoryTitle(categoryId: number): string {
     return categoryTitles.get(categoryId) ?? ''
+  }
+
+  // 键盘导航把高亮项滚入可视区（对齐 Sidebar/CategoryTreeSelect 的 scrollIntoView 用法）。
+  // aria-activedescendant 模式下焦点始终在输入框，浏览器不会自动跟随高亮，需手动滚动。
+  async function scrollActiveOptionIntoView(): Promise<void> {
+    await tick()
+    const option = dialogEl?.querySelector<HTMLElement>(`#spotlight-opt-${activeIndex}`)
+    option?.scrollIntoView({ block: 'nearest' })
   }
 
   function resultGlyph(title: string): string {
@@ -249,17 +261,47 @@
   }
 
   .spotlight-panel {
+    /* 默认亮色；深色由 [data-theme='dark'] 覆盖（对齐 ConfirmDialog 的变量主题模式）。 */
+    --spotlight-surface: rgba(255, 255, 255, 0.97);
+    --spotlight-text: #0f172a;
+    --spotlight-muted: #64748b;
+    --spotlight-border: rgba(226, 232, 240, 0.9);
+    --spotlight-divider: rgba(148, 163, 184, 0.24);
+    --spotlight-accent: #2563eb;
+    --spotlight-placeholder: #94a3b8;
+    --spotlight-active-bg: rgba(37, 99, 235, 0.12);
+    --spotlight-active-outline: rgba(37, 99, 235, 0.42);
+    --spotlight-glyph-bg: rgba(15, 23, 42, 0.06);
+    --spotlight-scope-bg: rgba(37, 99, 235, 0.1);
+    --spotlight-scope-border: rgba(37, 99, 235, 0.28);
+    --spotlight-shadow: 0 28px 70px rgba(15, 23, 42, 0.28);
     position: relative;
     width: min(560px, 100%);
     max-height: min(70vh, 560px);
     display: flex;
     flex-direction: column;
-    background: #1e293b;
-    color: #e5eefb;
-    border: 1px solid rgba(148, 163, 184, 0.25);
+    background: var(--spotlight-surface);
+    color: var(--spotlight-text);
+    border: 1px solid var(--spotlight-border);
     border-radius: var(--radius-xl);
-    box-shadow: 0 28px 70px rgba(15, 23, 42, 0.5);
+    box-shadow: var(--spotlight-shadow);
     overflow: hidden;
+  }
+
+  :global([data-theme='dark']) .spotlight-panel {
+    --spotlight-surface: #1e293b;
+    --spotlight-text: #e5eefb;
+    --spotlight-muted: #8fa1bd;
+    --spotlight-border: rgba(148, 163, 184, 0.25);
+    --spotlight-divider: rgba(148, 163, 184, 0.18);
+    --spotlight-accent: #93c5fd;
+    --spotlight-placeholder: #7d8ca6;
+    --spotlight-active-bg: rgba(37, 99, 235, 0.28);
+    --spotlight-active-outline: rgba(96, 165, 250, 0.55);
+    --spotlight-glyph-bg: rgba(255, 255, 255, 0.1);
+    --spotlight-scope-bg: rgba(96, 165, 250, 0.16);
+    --spotlight-scope-border: rgba(96, 165, 250, 0.35);
+    --spotlight-shadow: 0 28px 70px rgba(15, 23, 42, 0.5);
   }
 
   .spotlight-input-row {
@@ -267,7 +309,7 @@
     align-items: center;
     gap: 10px;
     padding: 15px 16px 13px;
-    border-bottom: 1px solid rgba(148, 163, 184, 0.18);
+    border-bottom: 1px solid var(--spotlight-divider);
   }
 
   .spotlight-search-icon {
@@ -275,7 +317,7 @@
     height: 18px;
     flex-shrink: 0;
     fill: none;
-    stroke: #93c5fd;
+    stroke: var(--spotlight-accent);
     stroke-width: 2;
     stroke-linecap: round;
   }
@@ -286,20 +328,20 @@
     border: 0;
     outline: 0;
     background: transparent;
-    color: #f1f5f9;
+    color: var(--spotlight-text);
     font-size: 15px;
   }
 
   .spotlight-input::placeholder {
-    color: #7d8ca6;
+    color: var(--spotlight-placeholder);
   }
 
   .spotlight-scope {
     flex-shrink: 0;
     font-size: 11px;
-    color: #93c5fd;
-    background: rgba(96, 165, 250, 0.16);
-    border: 1px solid rgba(96, 165, 250, 0.35);
+    color: var(--spotlight-accent);
+    background: var(--spotlight-scope-bg);
+    border: 1px solid var(--spotlight-scope-border);
     border-radius: var(--radius-pill);
     padding: 2px 9px;
   }
@@ -321,8 +363,8 @@
   }
 
   .spotlight-option.active {
-    background: rgba(37, 99, 235, 0.28);
-    outline: 1px solid rgba(96, 165, 250, 0.55);
+    background: var(--spotlight-active-bg);
+    outline: 1px solid var(--spotlight-active-outline);
   }
 
   .spotlight-option-glyph {
@@ -333,7 +375,7 @@
     align-items: center;
     justify-content: center;
     border-radius: var(--radius-sm);
-    background: rgba(255, 255, 255, 0.1);
+    background: var(--spotlight-glyph-bg);
     font-size: 14px;
     text-transform: uppercase;
   }
@@ -359,14 +401,14 @@
 
   .spotlight-option-sub {
     font-size: 11px;
-    color: #8fa1bd;
+    color: var(--spotlight-muted);
   }
 
   .spotlight-empty {
     list-style: none;
     padding: 18px 10px;
     text-align: center;
-    color: #8fa1bd;
+    color: var(--spotlight-muted);
     font-size: 13px;
   }
 
@@ -374,14 +416,14 @@
     list-style: none;
     padding: 8px 0 6px;
     text-align: center;
-    color: #8fa1bd;
+    color: var(--spotlight-muted);
     font-size: 11px;
   }
 
   .spotlight-footer {
-    border-top: 1px solid rgba(148, 163, 184, 0.18);
+    border-top: 1px solid var(--spotlight-divider);
     padding: 9px 14px;
     font-size: 11px;
-    color: #8294b0;
+    color: var(--spotlight-muted);
   }
 </style>

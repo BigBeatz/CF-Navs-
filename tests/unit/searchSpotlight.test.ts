@@ -31,6 +31,8 @@ const categories = [
 beforeEach(() => {
   vi.spyOn(api.public, 'registerClick').mockResolvedValue(null as never)
   vi.spyOn(publicStore, 'incrementClick').mockImplementation(() => undefined)
+  // jsdom 不实现 scrollIntoView；键盘导航把高亮项滚入可视区时会调用它。
+  Element.prototype.scrollIntoView = () => { }
 })
 
 afterEach(() => {
@@ -105,6 +107,24 @@ describe('SearchSpotlight', () => {
     await fireEvent.keyDown(input, { key: 'ArrowUp' }) // 首项再上循环到末项
     await tick()
     expect(input.getAttribute('aria-activedescendant')).toBe('spotlight-opt-1')
+  })
+
+  it('方向键导航把当前高亮项滚入可视区', async () => {
+    const spy = vi.spyOn(Element.prototype, 'scrollIntoView')
+    const items = [
+      bookmark({ id: 1, title: 'A', click_count: 3 }),
+      bookmark({ id: 2, title: 'B', click_count: 2 }),
+    ]
+    render(SearchSpotlight, { props: { open: true, bookmarks: items, categories } })
+    await tick()
+    const input = screen.getByRole('combobox')
+
+    await fireEvent.keyDown(input, { key: 'ArrowDown' })
+    await tick()
+    // 高亮已移到第 2 项，被滚入可视区的应是该项对应的 option 元素。
+    const active = document.getElementById('spotlight-opt-1')
+    expect(spy).toHaveBeenCalled()
+    expect(spy.mock.instances).toContain(active)
   })
 
   it('Enter 打开高亮项：open_method=1 走新窗口并登记点击（只一次）', async () => {

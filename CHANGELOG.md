@@ -7,6 +7,8 @@
 
 ## [Unreleased]
 
+## v0.7.1 — 2026-09-21
+
 ### 修复 v0.7.0 冒烟脚本 recover 场景（refs #24）
 
 - 根因：`scripts/smoke-test.mjs` 的 `call()` 辅助函数只解构 `{ method, token, body }`，recover 段传入的 `headers: { 'X-Setup-Token': ... }` 被静默丢弃——三个「有效令牌」用例实际未带令牌头，全部返回 `401 unauthorized`；前两个 401 断言（错误令牌 / 缺令牌头）是碰巧通过。CI 自 170fd71（recover 功能提交）起即因此红线，与 merge 到 main 无关。

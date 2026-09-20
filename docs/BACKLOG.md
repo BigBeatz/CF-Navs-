@@ -33,7 +33,6 @@
 | PROB-13 | 验证欠账 | P1 | `L1` 首访探测一次/二访零次；`L3` Service Worker 接管 + 预缓存含 `index-*.js`/`.css`；`L4` 离线可打开；**2026-09-19 L3 复验**：首访/二访、Service Worker、预缓存、离线均通过；Tier 1 自定义 JS 临时写入/恢复已执行 | 仅 `L4`「已检测到新版本」需**两次真实部署**——并入下次真实发版清单，不单独安排；`S3` 自定义 JS 的 CSP 断言与导入提示需 Tier 1 写 + 含自定义 JS 的备份文件，可按需授权在测试实例做；另 2026-09-19 L3 观测到 `accept:prod` 移动端弹窗动作栏选择器与线上标记不匹配，属**测试脚本欠账**（非产品缺陷） | PH PROB-13 |
 | PROB-23 | 验证欠账 | P2 | Cache Storage ≤ 5 MiB、首页 0 破图；**2026-09-19 L3 复验** `accept:prod` 0.90 MiB / `perf:audit` 1.20 MiB，均无破图、低于预算 | 旧 SW 版本残留取决于访客浏览器历史，干净 profile **不可控复现**；SW 按构建指纹命名缓存的机制已由单测 + L3 二访 SW 接管覆盖，**不刻意追真实陈旧态** | PH PROB-23 |
 | REQ-08b | 验证欠账 | P3 | — | 逐套切换 13 个毛玻璃预设：Tier 1（写 `background_preset_id`）+ 纯人眼审美，**随外观/背景轮次人工过一遍**，无自动化价值 | RD REQ-08 |
-| REQ-14 | 验证欠账 | P2 | L0 全绿、`recover.test.ts`/`recoverView.test.ts` 单测、L1 `smoke` 83/83（恢复成功/401/限流/弱密码/新旧密码） | `/recover` 页面在真实浏览器的表单提交、成功跳转、令牌错误与限流文案、未安装引导——本地 `browser.open` 连接层报 `ERR_FAILED`（页面 HTTP 200、worker 日志正常），改到 `develop` 部署后按真实 Chrome 复核 | RD REQ-14 |
 
 ## 4. 需要向报告者澄清
 

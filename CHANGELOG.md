@@ -15,7 +15,8 @@
 - 重构：从 `worker/routes/install.ts` 抽出 `worker/lib/setupToken.ts`（`authorizeSetup` + `isSameOriginRequest`）与 `worker/lib/installRateLimit.ts`（限流四函数 + 常量，`client_key` 参数化），install 与 recover 共用、行为不变；admin 设置 key 常量从 `worker/lib/bootstrap.ts` 导出统一引用。
 - 前端：新增 `/recover` 页面 `src/views/Recover.svelte`（复刻安装页视觉，无用户名字段），`src/App.svelte` 挂载 `/recover` 路由分支，登录弹窗新增「忘记密码？」入口，`src/lib/api.ts` 补 `authApi.recover`，`shared/types.ts` 新增 `RecoverReq`。
 - 文档：`docs/reference/API_CONTRACT.md` 补 `POST /api/recover` 契约；`docs/guides/DEPLOYMENT.md`、`docs/guides/TROUBLESHOOTING.md` 恢复路径重排为三级（账号安全改密 → `/recover` → `INIT_ADMIN_*`/`RESET_ADMIN_CREDENTIALS` 重部署兜底）。
-- 验证：L0 `type-check` 315 files 0/0、`npm test` 127 files / 943 tests、build 成功；新增 `recover.test.ts` 13/13、`recoverView.test.ts` 6/6；L1 `npm run smoke` 83/83（含恢复成功、错误/缺令牌 401、弱密码 1002、新密码可登录、旧密码被拒）。`/recover` 页面真实浏览器 L2 待 `develop` 部署后复核（本地 `browser.open` 连接层 `ERR_FAILED`，页面 HTTP 200、worker 日志正常），见 `docs/BACKLOG.md` §3。Issue #24 在实现进默认分支并部署验证前保持 Open。
+- 追加：部署密钥非 ASCII 字符前端校验——`src/lib/setupTokenInput.ts` 的 `isAsciiPrintableToken`（可见 ASCII 0x20–0x7E）接入 `Recover.svelte` 与 `Install.svelte`，含全角字符（如全角 `￥`）的令牌在提交前被拦下并给友好提示，不再暴露浏览器 `Headers` 构造的原始 `TypeError`。根因：HTTP 头值限 ISO-8859-1，`SETUP_TOKEN` 含非 ASCII 会让 `X-Setup-Token` 头无法构造。
+- 验证：L0 `type-check` 316 files 0/0、`npm test` 948 tests、build 成功；单测 `recover.test.ts` 14/14、`recoverView.test.ts` 7/7、`setupTokenInput.test.ts` 4/4；L1 `npm run smoke` 83/83（恢复成功、错误/缺令牌 401、弱密码 1002、新密码可登录、旧密码被拒）。**部署后真实浏览器 L2 已完成**（`develop` 生产站点，ASCII 令牌 `123456#$%@ss`）：`/recover` 页面渲染（无用户名字段）、客户端密码校验、全角令牌被拦并显示友好提示；正向 round-trip 成功——恢复重置密码后旧密码失效、预置会话经 `rotateJwtSecret` 失效（`/api/me`→401），随后经 `/api/password` 还原原密码、站点状态复原。独立 `workflow-reviewer` 复核 PASS（低 severity 的 schema-less→`not installed` 已修）。Issue #24 在提交进默认分支并最终确认前保持 Open。
 
 ### 后台管理界面审计整改 P0（对比度 / 焦点环 / 主题基建）
 

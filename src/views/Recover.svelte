@@ -2,6 +2,7 @@
   import { api, getErrorMessage } from '../lib/api'
   import { ApiError } from '../lib/api'
   import { ErrCode, type LoginResp } from '../../shared/types'
+  import { SETUP_TOKEN_ASCII_ERROR, isAsciiPrintableToken } from '../lib/setupTokenInput'
 
   export let onRecovered: (session: LoginResp) => Promise<void> | void
   export let onGoInstall: () => void
@@ -36,6 +37,10 @@
 
     if (!setupToken.trim()) {
       localError = '请输入部署时配置的 SETUP_TOKEN。'
+      return
+    }
+    if (!isAsciiPrintableToken(setupToken.trim())) {
+      localError = SETUP_TOKEN_ASCII_ERROR
       return
     }
     if (password.length < MIN_PASSWORD_LENGTH || password.length > MAX_PASSWORD_LENGTH) {

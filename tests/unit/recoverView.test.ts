@@ -46,6 +46,14 @@ describe('Recover.svelte', () => {
     expect(screen.getByRole('alert').textContent).toContain('至少两类字符')
   })
 
+  it('rejects a non-ASCII (full-width) token client-side without calling the API', async () => {
+    renderRecover()
+    await fill('123456#\uFFE5%@ss', 'abcd1234') // 全角￥ 会让 Headers 构造抛错
+    await submit()
+    expect(recover).not.toHaveBeenCalled()
+    expect(screen.getByRole('alert').textContent).toContain('ASCII')
+  })
+
   it('rejects too-short password without calling the API', async () => {
     renderRecover()
     await fill('token-abc', 'ab1') // too short

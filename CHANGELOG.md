@@ -7,6 +7,52 @@
 
 ## [Unreleased]
 
+## v0.6.0 — 2026-09-20
+
+功能版本。新增首页离屏搜索按钮与居中 Spotlight 命令面板（REQ-01）：`Ctrl/Cmd+K`、`/` 或浮动按钮唤起，即时检索、键盘导航、主题自适应，高亮项自动滚入可视区。同步收敛后台增删改编排（PROB-24）、后台公开对象图标恢复共享缓存（PROB-35），关闭 PROB-36（首页搜索防抖复核为测量伪影 + `perf:audit` 门禁时序加固）与 PROB-19v（登出撤销的会话存储失败分支），补齐详情卡片列宽缺失回退到 160px（refs #22）。部署来源为 `develop`。
+
+### 新增离屏搜索按钮与居中 Spotlight 命令面板（REQ-01）
+
+- 首页搜索框滚出视口后，右上浮动操作组出现搜索按钮（`search_box_show=false` 时恒显，保证始终有搜索入口）；点击按钮或全局 `Ctrl/Cmd+K`、`/` 唤起居中命令面板 `SearchSpotlight.svelte`，`Esc` 关闭。面板即时过滤，结果范围与首页完全一致（共用同一 `publicData.bookmarks`），空查询展示常用书签，上限 50 条，键盘上下/回车选中、回车打开书签详情。
+- 组件懒加载（`ensureSearchSpotlightComponent`）；`openSpotlight` 在 await 加载前后各校验一次 `spotlightOpen / anyBlockingModalOpen / currentView / canSeeHome`，与登录/分类/书签/确认框/详情卡互斥（D-e），共用单槽滚动锁 `src/lib/pageScrollLock.ts`（从 `BookmarkEditModal` 抽出，单实例保存/恢复 `overflow`）。全局 keydown 守卫排除输入态与 IME（`isComposing`、`event.key === 'Process'`）。
+- 离屏可见性由 `src/lib/searchBoxVisibility.ts`（IntersectionObserver，无 IO 时回退为可见）观测 `.hero-search`，Home 订阅透传给浮动操作组。搜索按钮常驻 DOM，用 `class:is-visible` + `opacity/visibility` 过渡（走 `--transition-base` 令牌，无字面时长，`prefers-reduced-motion` 关闭过渡）；隐藏态 `aria-hidden` + `tabindex=-1` 不可聚焦，并以 `position:absolute` 移出 flex 流避免按钮组空槽。
+- 新增单测 `pageScrollLock.test.ts`、`searchBoxVisibility.test.ts`、`searchSpotlight.test.ts`、`homeFloatingActions.test.ts`（离屏按钮可见性/可聚焦/无障碍名与快捷键）。
+- 验证：L0 类型检查 311 files 0/0、`npm test` 125 files / 923 tests 全通过、生产构建成功；L2 真实 Chrome 25/25（滚动进出按钮、Ctrl+K 唤起、居中面板、字母头像占位无图标请求、模态互斥、移动端无溢出）；L3 `perf:audit` 全部预算通过（含首页防抖 jank-immune 门禁、图标请求 232 ≤ 260、缓存 1.2 MiB ≤ 5 MiB）+ Spotlight 50 条探针。独立复核就竞态/过渡/IME/布局空槽提出四轮意见，均已 fix-forward 收敛。
+- 上线后修复两处用户实测缺陷并在生产验证：面板配色此前硬编码深色、不随站点主题变化，改为默认亮色 `--spotlight-*` 变量 + `:global([data-theme='dark'])` 覆盖（对齐 `ConfirmDialog`）随主题自动切换；方向键导航此前不滚动，新增 `scrollActiveOptionIntoView`（`aria-activedescendant` 模式下焦点常驻输入框、浏览器不自动跟随高亮），高亮项超出面板时自动滚入可视区。真实 Chrome 生产实测：亮色面板白底深字、暗色深板浅字随 `data-theme` 翻转；50 条结果溢出时连按 ArrowDown 高亮项 `scrollTop` 持续跟随、始终可见。
+- **使用说明**：
+  - **唤起**：首页按 `Ctrl+K`（macOS `Cmd+K`）或 `/`；向下滚动使顶部搜索框离开视野后，也可点击右上角浮动的搜索按钮（`search_box_show=false` 时该按钮恒显）。
+  - **检索**：输入关键词即时过滤书签标题 / 网址 / 分类；空关键词展示最常访问的书签，结果上限 50 条。
+  - **键盘**：`↑` / `↓` 移动高亮（到端循环）、`Home` / `End` 跳首尾、`Enter` 打开当前项、`Esc` 关闭；高亮项自动滚入可视区。
+  - **打开方式**：沿用每个书签自身设置（新标签页 / 当前页 / 站内弹层）。
+  - **主题**：面板配色随站点亮 / 暗主题自动适配。
+
+### 关闭 PROB-36：首页搜索防抖复核为测量伪影，perf:audit 门禁时序加固
+
+- 复核结论：首页搜索**不缺防抖**。`src/views/Home.svelte` 既有 120ms 尾沿防抖（`SEARCH_FILTER_DEBOUNCE_MS` + `scheduleSearchFilterUpdate`），书签过滤/列表重渲染只读防抖后的 `deferredSearchQuery`；隔离 Chrome 正常负载复测 3/3，连打 `n`/`np`/`npm`（间隔 ~46ms < 120ms）settle 前 **0 次 mutation**，防抖窗过后一次重建（7 records）。
+- 上轮 L3 `perf:audit` 报出的 16 次 mutation 是测量伪影：那次运行全程 ~294s（约 10 倍负载），固定 45ms 的按键间隔被主线程拖到超过 120ms 防抖窗，防抖在打字途中触发了一次重建并计入 settle 前计数。
+- 工具加固（`scripts/perf-audit.mjs`）：`runHomeSearch` 改为记录每次按键真实时间戳与 mutation 批次，门禁只断言「最后一次按键后 60ms 判定窗内无立即重渲染」（未防抖实现会在一个 tick 内命中，卡顿不影响判定）；另报 `rebuiltAfterSettle` 正向佐证搜索链路在工作。复跑 `npm run perf:audit` 该项通过（`immediateAfterLastKey=0`，gaps 55/45ms，settle 后 7 records），其余 9 项预算同轮通过（图标请求 232 ≤ 260、缓存 1.2 MiB ≤ 5 MiB、首页 0 破图、一方请求失败 0）。
+
+### 关闭 PROB-19v：登出撤销的会话存储失败分支闭环
+
+- 登出撤销的 `store_unavailable` 分支（`worker/routes/auth.ts` 的 `POST /logout`：`SESSION` 绑定存在但 `revokeSession` 写入抛错时返回 `{revoked:false, reason:'store_unavailable'}`、HTTP 200 且不谎称撤销成功）已由 `tests/unit/sessionRevocation.test.ts` 路由级单测覆盖——注入 `put` 抛错的 KV，断言响应体，并与 `store_unconfigured`（缺绑定）区分。
+- happy path（登出后旧 token 在 15 秒窗口内被拒）三次生产实测 178 ms / 212 ms / 216 ms，均远低于窗口。生产 KV 故障注入不可行且不必要，失败分支的可观察契约已由单测闭环。据此从 `docs/BACKLOG.md` §3 移除，正式关闭。
+- 本次为文档 / 状态收尾，未改源码或测试；`sessionRevocation.test.ts` 复跑 11/11 通过。
+
+### 后台公开对象图标改用匿名代理 URL 恢复共享缓存（PROB-35）
+
+- 后台分类 / 书签 / 访问分析三个面板此前无条件给所有对象代理图标 URL 附加授权 `key`，使公开对象的响应也变成 `private, no-store`、丢失 edge / 浏览器 / 分类 Service Worker 缓存，每次渲染都为每个图标回源一次外站。本轮按「有效可见性」分流：公开对象改用不带 `key` 的匿名 `/api/{icon,category-icon}/:id?v=...`（恢复共享缓存），有效私密对象继续带签名 `key`。
+- 有效私密判定复用既有前端镜像 `getHiddenCategoryIds`（与 Worker `getPublicCategoryIds` 由 `tests/unit/publicVisibility.test.ts` 交叉断言，覆盖私密祖先链与循环链）：分类看自身是否落入 hidden 集，书签看 `is_private` 或所属分类是否落入 hidden 集——覆盖「公开子分类挂私密根下」「公开书签在私密分类树下」两种 Worker 匿名拒绝条件。
+- 不改 Worker 判定顺序、缓存命名空间、TTL、`no-store` 边界与 `withIconAccessKey` 签名；首页公开卡片本就不带 `key`，未受影响。
+- 新增 `tests/unit/adminIconAccess.test.ts`：三个面板 mount 后断言渲染 `<img src>` 的 key 分流（公开无 `key`、私密与私密树下对象带 `key`，含祖先链情形）。
+- 验证：L0 类型检查 0 errors / 0 warnings、`npm test` 122 files / 906 tests 全通过、生产构建成功。图标链路属缓存 / 性能相关：后台 L2 浏览器分流与推送后的 L3（真实 edge/SW 命中、`perf:audit` 图标请求与 Cache Storage 预算）未跑，进发版前清单。
+
+### 后台增删改编排收敛到 runAdminMutation（PROB-24）
+
+- `src/App.svelte` 里分类 / 书签 / 设置的创建、编辑、删除、批量删除、批量移动共 8 个处理器各自重复的 `try/catch/finally + 成功 Toast + 刷新` 样板，收敛到新的纯编排函数 `src/lib/appAdminMutation.ts` 的 `runAdminMutation`（对齐既有 `runOptimisticSort` 的「纯函数 + 回调选项」约定）。行为不变：成功文案、busy 标记清理时机、批量条件刷新、`handleBatchMoveBookmarks` 的失败重抛、设置提交不触发数据刷新等逐条保持。
+- 只做这一块编排收敛，未触碰安装 / 引导、鉴权、排序、reorganize 等其余处理器。
+- 新增 `tests/unit/appAdminMutation.test.ts` 断言 run→onSuccess→成功 Toast 的顺序、run 与 onSuccess 抛错统一落 onError、rethrow 重抛原始错误、successMessage 返回空串不弹 Toast、onSettled 恒执行；`tests/unit/confirmationFlow.test.ts` 一条随调用形态改变而失效的源码文本断言改为形态无关的接线存在性检查。
+- 验证：L0 类型检查 0 errors / 0 warnings、`npm test` 121 files / 903 tests 全通过、生产构建成功。App.svelte 组件层的 L2 浏览器回归未跑（无可达实例与管理员凭据），进发版前清单。
+
 ### 详情卡片列宽缺失回退补齐到 160px（refs #22）
 
 - v0.5.1 只把数据层默认（schema seed、`CARD_SIZE_DEFAULTS`、Home 兜底）改为 160px，组件与 CSS 层仍残留 200px 兜底：`CategorySection` / `BookmarkCard` 的 width prop 默认、两张卡片的网格与外壳 CSS fallback、`getInfoCardTrackWidth` 的非有限输入回落。本轮把这 5 处全部统一到 160px，使首次部署或缺失设置时详情卡列宽下限与共享默认一致；用户显式保存的宽度不迁移。

@@ -110,28 +110,52 @@ CF-Navs 需要以下 Cloudflare 资源：
 
 适合希望全程在浏览器中操作、不想安装本地工具的用户。Cloudflare 关联你的 GitHub Fork 后，会从 `main` 生产分支自动构建和部署；以后同步上游更新时，也请更新这个分支。
 
-1. [Fork 本仓库](https://github.com/lbjxr/CF-Navs/fork)，保留 `main` 分支，并确认后续 Cloudflare 构建使用的是你的 Fork。
-2. 在 Cloudflare 控制台打开 **Workers & Pages → Create application → Import a repository**，授权 Cloudflare 访问 GitHub，并选择你的 Fork。
-3. 在构建配置中填写：
-   - 生产分支：`main`
-   - 根目录：`/`
-   - Build command：`npm run build`
-   - Deploy command：`npx wrangler deploy`
-   - Node.js：推荐 24 LTS；如需指定版本，在**构建变量**中设置 `NODE_VERSION=24`（[官方说明](https://developers.cloudflare.com/workers/ci-cd/builds/build-image/)）
-4. 保存并完成第一次 **Production** 部署。正常情况下，Cloudflare 会根据 [`wrangler.toml`](wrangler.toml) 创建并绑定 `DB` D1 数据库和 `SESSION` KV 命名空间。
+#### 步骤 1：Fork 本仓库
 
-   首次部署后应能看到这两个绑定。如果出现 missing binding 或资源创建权限错误，先确认部署来自 `main` 的 **Production** 环境、Cloudflare 当前选择的是正确账号，并查看[故障排查](docs/guides/TROUBLESHOOTING.md)；不要在没有确认账号和资源的情况下重复创建数据库或 KV。
+[![Fork on GitHub](https://img.shields.io/badge/Fork-GitHub-181717?style=for-the-badge&logo=github)](https://github.com/lbjxr/CF-Navs/fork)
+
+点击上方 **"Fork on GitHub"** 按钮，并点上 ⭐ Star！
+
+#### 步骤 2：部署到 Cloudflare Workers
+
+[![Deploy to Cloudflare Workers](https://img.shields.io/badge/Deploy-Cloudflare%20Workers-F38020?style=for-the-badge&logo=cloudflare&logoColor=white)](https://dash.cloudflare.com/?to=/:account/workers-and-pages)
+
+点击上方按钮跳转到 Cloudflare，然后选择连接到 GitHub，授权后选择刚才 Fork 的项目。
+
+<img width="1600" height="1000" alt="选择项目" src="docs/screenshots/cf-deploy-select-repo.webp">
+
+点击 **开始设置** 后，在构建配置中确认以下值（其余保持默认即可）：
+
+- 构建命令：`npm run build`
+- 部署命令：`npx wrangler deploy`
+- 生产分支 `main`、根目录 `/` 与 Node.js 环境由 [`wrangler.toml`](wrangler.toml) 自动识别；如需指定 Node.js 版本，在**构建变量**中设置 `NODE_VERSION=24`（[官方说明](https://developers.cloudflare.com/workers/ci-cd/builds/build-image/)）
+
+<img width="1600" height="1000" alt="构建设置" src="docs/screenshots/cf-deploy-build-settings.webp">
+
+#### 步骤 3：保存并完成第一次生产部署
+
+保存并完成第一次 **Production** 部署。正常情况下，Cloudflare 会根据 [`wrangler.toml`](wrangler.toml) 创建并绑定 `DB` D1 数据库和 `SESSION` KV 命名空间。
+
+首次部署后应能看到这两个绑定。如果出现 missing binding 或资源创建权限错误，先确认部署来自 `main` 的 **Production** 环境、Cloudflare 当前选择的是正确账号，并查看[故障排查](docs/guides/TROUBLESHOOTING.md)；不要在没有确认账号和资源的情况下重复创建数据库或 KV。
 
 
-5. 第一次生产部署完成后，在 Worker 的 **设置 → 变量和密钥** 中选择**生产环境**，配置 `SETUP_TOKEN`：
-   - 如果列表中已经有 Cloudflare 自动生成的 `SETUP_TOKEN`，请编辑它并替换为你自己保存的值，然后在 **设置 → 构建** 中执行一次**清理缓存**。
-   - 如果已有的是普通文本变量而不是密钥，请删除它，再重新添加类型为**密钥**的 `SETUP_TOKEN`。不要同时保留同名的普通变量和 Secret。
-   - 如果列表中没有 `SETUP_TOKEN`，请手动添加类型为**密钥**的变量。值使用足够长的随机字符串，不要添加为普通文本变量。
+#### 步骤 4：配置 SETUP_TOKEN 密钥
 
-   <img src="docs/screenshots/cf-deploy3.jpg" alt="Cloudflare 控制台变量和密钥设置示意">
+第一次生产部署完成后，在 Worker 的 **设置 → 变量和密钥** 中选择**生产环境**，配置 `SETUP_TOKEN`：
 
-6. 保存 Secret 后重新部署同一个 `main` 生产部署：可以在 **Deployments** 页面对最近一次生产部署执行 **Retry/Redeploy**，也可以向 `main` 推送一个新提交。不要只保存 Secret 后直接访问 `/install`，必须先让新的部署读取到 Secret。
-7. 打开部署后的 Workers URL，并访问 `/install`。输入当前生产环境中配置的 `SETUP_TOKEN` 值，再创建管理员用户名和密码。确认安装和登录成功后，删除或轮换这个令牌；无论它原来是 Cloudflare 自动生成的还是你手动添加的，已完成安装的站点都不再需要它。
+- 如果列表中已经有 Cloudflare 自动生成的 `SETUP_TOKEN`，请编辑它并替换为你自己保存的值，然后在 **设置 → 构建** 中执行一次**清理缓存**。
+- 如果已有的是普通文本变量而不是密钥，请删除它，再重新添加类型为**密钥**的 `SETUP_TOKEN`。不要同时保留同名的普通变量和 Secret。
+- 如果列表中没有 `SETUP_TOKEN`，请手动添加类型为**密钥**的变量。值使用足够长的随机字符串，不要添加为普通文本变量。
+
+<img src="docs/screenshots/cf-deploy3.jpg" alt="Cloudflare 控制台变量和密钥设置示意">
+
+#### 步骤 5：重新部署让 Secret 生效
+
+保存 Secret 后重新部署同一个 `main` 生产部署：可以在 **Deployments** 页面对最近一次生产部署执行 **Retry/Redeploy**，也可以向 `main` 推送一个新提交。不要只保存 Secret 后直接访问 `/install`，必须先让新的部署读取到 Secret。
+
+#### 步骤 6：访问 /install 完成安装
+
+打开部署后的 Workers URL，并访问 `/install`。输入当前生产环境中配置的 `SETUP_TOKEN` 值，再创建管理员用户名和密码。确认安装和登录成功后，删除或轮换这个令牌；无论它原来是 Cloudflare 自动生成的还是你手动添加的，已完成安装的站点都不再需要它。
 
 自定义域名是可选项：先在 **域和路由** 中添加并启用自定义域名，确认它可以正常访问并完成登录，再根据需要关闭 `workers.dev` 地址。如果还没有准备好自定义域名，请保留 Workers URL，不要提前关闭默认访问入口。
 

@@ -11,6 +11,7 @@
     filterAdminCategoryGroups,
     flattenAdminCategoryGroups,
     getAdminSortIds,
+    getHiddenCategoryIds,
     reorderAdminSortDraft,
   } from '../../lib/adminListState'
   import CategoryIcon from '../CategoryIcon.svelte'
@@ -48,6 +49,7 @@
   let trackedCategorySearch = ''
 
   $: categoryGroups = buildAdminCategoryGroups(categories)
+  $: hiddenCategoryIds = getHiddenCategoryIds(categories)
   $: filteredGroups = filterAdminCategoryGroups(categoryGroups, search)
   $: totalPages = getAdminListTotalPages(filteredGroups.length)
   $: page = clampAdminListPage(page, totalPages)
@@ -239,7 +241,7 @@
               <article class="admin-compact-card sortable" data-sortable-item data-sort-id={category.id}>
                 <span class="admin-drag-handle" aria-hidden="true">⋮⋮</span>
                 {#if category.icon?.trim()}
-                  <CategoryIcon category={toCategoryIconValue(category)} size={28} className="admin-icon-badge" iconAccessKey={$iconAccessKey} imageLoading="eager" />
+                  <CategoryIcon category={toCategoryIconValue(category)} size={28} className="admin-icon-badge" iconAccessKey={hiddenCategoryIds.has(Number(category.id)) ? $iconAccessKey : ''} imageLoading="eager" />
                 {:else}
                   <span class="admin-icon-badge">📁</span>
                 {/if}
@@ -271,7 +273,7 @@
                   <span class="admin-tree-toggle-spacer" aria-hidden="true"></span>
                 {/if}
                 {#if group.root.icon?.trim()}
-                  <CategoryIcon category={toCategoryIconValue(group.root)} size={28} className="admin-icon-badge" iconAccessKey={$iconAccessKey} imageLoading="eager" />
+                  <CategoryIcon category={toCategoryIconValue(group.root)} size={28} className="admin-icon-badge" iconAccessKey={hiddenCategoryIds.has(Number(group.root.id)) ? $iconAccessKey : ''} imageLoading="eager" />
                 {:else}
                   <span class="admin-icon-badge">📁</span>
                 {/if}
@@ -302,7 +304,7 @@
                       <input type="checkbox" aria-label={`选择分类 ${category.title}`} checked={selectedIds.has(Number(category.id))} on:change={(event) => toggleCategorySelection(event, Number(category.id))} />
                       <span class="admin-hierarchy-connector" aria-hidden="true">↳</span>
                       {#if category.icon?.trim()}
-                        <CategoryIcon category={toCategoryIconValue(category)} size={28} className="admin-icon-badge" iconAccessKey={$iconAccessKey} imageLoading="eager" />
+                        <CategoryIcon category={toCategoryIconValue(category)} size={28} className="admin-icon-badge" iconAccessKey={hiddenCategoryIds.has(Number(category.id)) ? $iconAccessKey : ''} imageLoading="eager" />
                       {:else}
                         <span class="admin-icon-badge">📁</span>
                       {/if}

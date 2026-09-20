@@ -7,7 +7,7 @@
 
 ## 0. 交付范围一句话
 
-新增免登录的 `POST /api/recover`：同源 + `X-Setup-Token`（复用 `/install` 的部署者令牌）+ 独立限流，校验通过后写入新管理员凭据、同步 bootstrap 标记、轮换 JWT secret 作废全部会话，返回 `LoginResp` 直接进入登录态；前端 `/recover` 页承载表单与错误/成功/引导态。
+新增免登录的 `POST /api/recover`：同源 + `X-Setup-Token`（复用 `/install` 的部署者令牌）+ 独立限流，校验通过后只写入新管理员密码（保留 `admin_username` 和 `admin_bootstrap_password` 快照）、轮换 JWT secret 作废全部会话，返回 `LoginResp` 直接进入登录态；前端 `/recover` 页承载表单与错误/成功/引导态。
 
 ## 1. 关键前置修正（相对需求文档初稿）
 
@@ -81,7 +81,7 @@
 4. **限流读**：`ensureInstallRateLimitTable` + `readInstallFailures(DB, 'recover:'+ip)`；命中上限 → `fail(RATE_LIMITED, ...)`（HTTP 200 + code）。
 5. **令牌校验**：`authorizeSetup(env, X-Setup-Token)` 为假 → `consumeInstallAttempt(DB, 'recover:'+ip)` 后 `fail(UNAUTHORIZED, 'unauthorized'), 401`（真实 401）。未配置 `SETUP_TOKEN` 时 `authorizeSetup` 恒假 → 同样 401，不区分「未配置/错误」。
 6. **密码校验**：长度 `8..12` 且至少两类字符（小写/大写/数字/符号 四类中 ≥2 类）→ 否则 `fail(BAD_REQUEST, ...)`，**不产生任何写入**。请求体若携带 username 一律忽略，不校验、不写入。此策略是恢复端点**专用**，不复用 install 的 `MIN_PASSWORD_LENGTH`；抽 `isValidRecoverPassword(pw)` 纯函数便于单测。
-7. **写入（单批）**：一个 `DB.batch` 原子写两键——`admin_password` = `await hashPassword(password)`、`admin_bootstrap_password` = 同一新哈希。`admin_username` / `admin_bootstrap_username` **不写、不改**（D-2）。同步 bootstrap 密码标记：否则下次带未变化 `INIT_ADMIN_*` 的部署可能触发 `ensureAdminBootstrap` 的 `initCredentialsChanged` 回滚。
+7. **写入**：调用 `setSettingValue(DB, admin_password, newHash)`，只更新 `admin_password`。`admin_username` / `admin_bootstrap_username` / `admin_bootstrap_password` **不写、不改**（D-2）。`admin_bootstrap_password` 是非 web-install 实例用于判断 `INIT_ADMIN_*` 是否变化的最近快照；把它改成新哈希会使未变的 INIT 密码校验失败，下一次登录回滚本次恢复。该写入与现有 `/api/password` 保持一致。
 8. **作废会话**：`await clearAllSessions(env)`（= `rotateJwtSecret`）+ `clearAllCachedSessions()`。旧 Bearer 立即失效（不依赖 KV 撤销名单，无 15 秒窗口）。
 9. **清限流**：`clearInstallFailures(DB, 'recover:'+ip)`。
 10. **签发**：读现有 `admin_username` → `createSession(env, adminUsername)` → `ok(LoginResp)`；createSession 抛错 → `fail(SERVER_ERROR, 'recovery completed but session creation failed')`。
@@ -124,7 +124,7 @@
 
 ### 6.1 单元（`recover.test.ts`，参照 `install.test.ts` 的 FakeDb/createKv 夹具）
 
-- 成功：正确令牌 + 合法新密码 → `admin_password` 与 `admin_bootstrap_password` 更新、`admin_username` **不变**、返回可用 `LoginResp`（username 为原值）。
+- 成功：正确令牌 + 合法新密码 → `admin_password` 更新、`admin_username` 与 `admin_bootstrap_password` **不变**、返回可用 `LoginResp`（username 为原值）。
 - 令牌错误/缺失 → 401；连续失败到阈值 → RATE_LIMITED；限流后即使令牌正确仍 RATE_LIMITED。
 - 限流 key 隔离：recover 失败不影响 `/install` 的计数（断言不同 `client_key`）。
 - 跨域 → 403。
@@ -132,7 +132,7 @@
 - 未安装实例 → `not installed`，无写入。
 - 缺 `SESSION` 绑定 → SERVER_ERROR（fail-closed）。
 - 会话作废：`rotateJwtSecret` 被调用（旧 secret 变化）；反向对照——移除第 8 步则「旧 token 失效」断言失败。
-- bootstrap 同步：反向对照——只写 `admin_password` 不写 `admin_bootstrap_password` 时，模拟带旧 `INIT_ADMIN_*` 的 `ensureAdminBootstrap` 会回滚，断言应捕获。
+- bootstrap 快照保护：反向对照——如果恢复把 `admin_bootstrap_password` 改成新哈希，而 `INIT_ADMIN_PASSWORD` 未变，模拟下一次 `ensureAdminBootstrap` 会触发回滚；实现必须断言 bootstrap 快照保持原值。
 
 ### 6.2 L1（`smoke-test.mjs`）
 
@@ -148,7 +148,7 @@
 | --- | --- |
 | 端点误放 `/api/admin/*` 被 `authRequired` 拦死 | §1 C1：固定 `/api/recover`，公开路由组；单测断言无需 Bearer 即可到达 |
 | 绕过登录的攻击面 | 同源 + 令牌常量时间比较 + 独立 D1 限流；401 不泄露令牌是否配置 |
-| bootstrap 标记不同步致凭据回滚 | §3.2 第 7 步 `admin_password`+`admin_bootstrap_password` 同批写；单测反向对照 |
+| bootstrap 快照被错误覆盖致凭据回滚 | §3.2 第 7 步只写 `admin_password`；单测 + L1 smoke 覆盖非 web-install INIT bootstrap 场景 |
 | 限流与 install 互相锁死 | 独立 `recover:` 前缀 key（同表不同命名空间）；单测隔离断言 |
 | 抽取 helper 改坏 `/install` | 阶段 1 纯搬迁 + 既有 `install.test.ts` 回归；diff 审计仅搬迁 |
 | 缺 `SESSION` 时签发失败但已改密 | 第 2 步前置 fail-closed，改密前就拒绝；不进入写入 |
@@ -160,7 +160,7 @@
 2. 需求文档 §4 验收（后端/前端/文档/门禁）全部达成或显式豁免，§1 C1/C2 已回修；
 3. L0 全绿 + L1 恢复场景 + L2 截图证据；
 4. 阶段 2/3 属行为/公共契约改动 → 独立 `workflow-reviewer` 复核 `PASS`；
-5. RD/BACKLOG（§1 可开工）/CHANGELOG 回写；效果图密码提示与用户名字段已同步。
+5. RD/BACKLOG（§1 可开工）/CHANGELOG 回写；效果图密码提示与用户名字段已同步；bootstrap 快照保护说明与实现一致。
 
 ## 9. 决策（已定 / 待裁定）
 

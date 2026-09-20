@@ -234,6 +234,22 @@
 | 验证结果 | `npm run type-check` 通过，`npm test` 112 files / 821 passed，`npm run build` 成功，`git diff --check` 通过；生产/L2 复核仍按发布验收边界保留。 |
 | 维护口径 | 本条已完成，不再进入未批准需求或当前待实现清单；后续如修改 accent token，需复验本条的定义和预览回退。 |
 
+### 组 F 追加：Issue #24 管理员密码恢复
+
+#### REQ-14（P2，已实现，待部署后 L2）管理员密码恢复端点 `/api/recover`
+
+| 项 | 内容 |
+| --- | --- |
+| 来源映射 | [Issue #24](https://github.com/lbjxr/CF-Navs/issues/24)；需求 `docs/plans/ADMIN_RECOVERY_REQUIREMENTS.md`；开发契约 `docs/plans/ADMIN_RECOVERY_DEVELOPMENT.md`；高保真 `docs/plans/ADMIN_RECOVERY_MOCKUP_HIFI.html` |
+| 维护者裁定 | 只重置密码不改用户名（D-2）；密码策略专用 8–12 位且 ≥2 类字符，不复用 install 的 12–256（D-4）；令牌复用 `SETUP_TOKEN`（D-5） |
+| 端点 | `POST /api/recover`（`worker/routes/recover.ts`），挂在 admin 守卫外的公开组（`worker/index.ts`）。同源 + `X-Setup-Token`（常量时间比较）+ `install_rate_limits` 表 `recover:<ip>` 独立限流；仅已安装实例可用，未安装返回 `code=1002 not installed`。成功只写 `settings.admin_password`（保留 `admin_bootstrap_password` 快照，避免下次登录被 `ensureAdminBootstrap` 回滚）、轮换 JWT secret、清限流、返回 `LoginResp` |
+| 抽取 | `worker/lib/setupToken.ts`（`authorizeSetup` + `isSameOriginRequest`）与 `worker/lib/installRateLimit.ts`（限流四函数 + 常量，`client_key` 参数化）从 `install.ts` 原样抽出，install 改引用；admin key 常量从 `worker/lib/bootstrap.ts` 导出复用 |
+| 前端 | `src/views/Recover.svelte`（复刻 Install 视觉，无用户名字段）、`/recover` 路由分支（`src/App.svelte` + `isRecoverPath`）、登录弹窗「忘记密码？」入口（`LoginModal.svelte`）、`authApi.recover`（`src/lib/api.ts`）、`RecoverReq`（`shared/types.ts`） |
+| 关键前置修正 | 需求初稿的 `POST /api/admin/recover` 会被 `authRequired` 拦死，改用 `/api/recover`（C1）；校验数值口径修正（C2）；开发文档「同步写 bootstrap 快照」被 smoke 场景证伪，改为只写 `admin_password`（否则未变 INIT 密码校验失败触发回滚） |
+| 验证 | L0：`type-check` 315 files 0/0、`npm test` 127 files / 943 tests、build 成功；`recover.test.ts` 13/13、`recoverView.test.ts` 6/6；L1：`npm run smoke` 83/83（恢复成功/错误令牌 401/缺令牌 401/弱密码 1002/新密码可登录/旧密码被拒），`smoke-local` 已注入 `SETUP_TOKEN` |
+| 剩余 | `/recover` 页面真实浏览器 L2（表单/跳转/错误态/引导）；本地 `browser.open` 连接层 `ERR_FAILED`（页面 HTTP 200、worker 日志正常），改到 `develop` 部署后复核，见 BACKLOG §3 |
+| 未完成决策 | Issue #24 保持 Open；实现进默认分支并部署验证后再谈闭环 |
+
 ---
 
 ## 4. 待用户决策（OQ）

@@ -7,6 +7,16 @@
 
 ## [Unreleased]
 
+### 新增管理员密码恢复端点 `/api/recover`（REQ-14，Issue #24）
+
+- 新增免登录的 `POST /api/recover`：已安装实例上用部署者持有的 `SETUP_TOKEN`（请求头 `X-Setup-Token`，常量时间比较）+ 同源校验 + `install_rate_limits` 表 `recover:<ip>` 独立命名空间限流，重置管理员密码而无需重新部署。**只重置密码、不改用户名**；新密码须 8–12 位且至少含小写/大写/数字/符号中的两类（恢复端点专用策略，与 `/install` 的 12–256 不同）。
+- 成功只更新 `settings.admin_password` 并轮换 JWT secret 作废全部旧会话，返回 `LoginResp` 直接进入登录态；**刻意保留 `admin_bootstrap_password` 快照**——把它同步成新哈希会让未变的 `INIT_ADMIN_PASSWORD` 在下一次登录被判定为「初始化凭据变化」并回滚本次重置（该错误由 L1 smoke 场景发现并纠正）。未安装实例返回 `code=1002 not installed`，错误/未配置令牌返回真实 401，跨域 403，限流/密码校验走 `HTTP 200 + code` 包络。
+- 忘记原 `SETUP_TOKEN` 时可在 Cloudflare **设置 → 变量和密钥 → 生产环境** 新增/轮换该密钥后重新部署——令牌不落库、每次请求实时读环境值。
+- 重构：从 `worker/routes/install.ts` 抽出 `worker/lib/setupToken.ts`（`authorizeSetup` + `isSameOriginRequest`）与 `worker/lib/installRateLimit.ts`（限流四函数 + 常量，`client_key` 参数化），install 与 recover 共用、行为不变；admin 设置 key 常量从 `worker/lib/bootstrap.ts` 导出统一引用。
+- 前端：新增 `/recover` 页面 `src/views/Recover.svelte`（复刻安装页视觉，无用户名字段），`src/App.svelte` 挂载 `/recover` 路由分支，登录弹窗新增「忘记密码？」入口，`src/lib/api.ts` 补 `authApi.recover`，`shared/types.ts` 新增 `RecoverReq`。
+- 文档：`docs/reference/API_CONTRACT.md` 补 `POST /api/recover` 契约；`docs/guides/DEPLOYMENT.md`、`docs/guides/TROUBLESHOOTING.md` 恢复路径重排为三级（账号安全改密 → `/recover` → `INIT_ADMIN_*`/`RESET_ADMIN_CREDENTIALS` 重部署兜底）。
+- 验证：L0 `type-check` 315 files 0/0、`npm test` 127 files / 943 tests、build 成功；新增 `recover.test.ts` 13/13、`recoverView.test.ts` 6/6；L1 `npm run smoke` 83/83（含恢复成功、错误/缺令牌 401、弱密码 1002、新密码可登录、旧密码被拒）。`/recover` 页面真实浏览器 L2 待 `develop` 部署后复核（本地 `browser.open` 连接层 `ERR_FAILED`，页面 HTTP 200、worker 日志正常），见 `docs/BACKLOG.md` §3。Issue #24 在实现进默认分支并部署验证前保持 Open。
+
 ## v0.6.0 — 2026-09-20
 
 功能版本。新增首页离屏搜索按钮与居中 Spotlight 命令面板（REQ-01）：`Ctrl/Cmd+K`、`/` 或浮动按钮唤起，即时检索、键盘导航、主题自适应，高亮项自动滚入可视区。同步收敛后台增删改编排（PROB-24）、后台公开对象图标恢复共享缓存（PROB-35），关闭 PROB-36（首页搜索防抖复核为测量伪影 + `perf:audit` 门禁时序加固）与 PROB-19v（登出撤销的会话存储失败分支），补齐详情卡片列宽缺失回退到 160px（refs #22）。部署来源为 `develop`。

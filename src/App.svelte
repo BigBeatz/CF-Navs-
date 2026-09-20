@@ -6,6 +6,7 @@
     type BookmarkBatchMoveReq,
     type BookmarkReorganizeReq,
     type ChangePasswordReq,
+    type LoginResp,
     type PublicBookmark,
     type Settings,
     type ThemeMode,
@@ -14,6 +15,7 @@
   import Toast from './components/Toast.svelte'
   import Home from './views/Home.svelte'
   import Install from './views/Install.svelte'
+  import Recover from './views/Recover.svelte'
   import BookmarkLinkModal from './components/BookmarkLinkModal.svelte'
   import { api, getErrorMessage, isUnauthorizedError } from './lib/api'
   import type { BackupSelection as BackupSelectionInput } from './lib/appBackup'
@@ -56,6 +58,7 @@
     hasInstalledHint,
     installationCommittedAfterFailure,
     isInstallPath,
+    isRecoverPath,
     normalizeInstallError,
     replaceBrowserPath,
     setInstalledHint,
@@ -106,6 +109,7 @@
 
   let booting = true
   let installState: InstallScreenState = { type: 'checking' }
+  let recoverActive = false
   let rootError = ''
   // 数据加载失败时的原始异常，用来判断是否需要回头复核安装状态。
   let lastDataError: unknown = null
@@ -1067,6 +1071,28 @@
       await refreshAdminDataAfterMutation()
     }
   }
+  async function handleRecovered(session: LoginResp): Promise<void> {
+    recoverActive = false
+    await enterInstalledApp(session)
+  }
+  function handleGoInstall(): void {
+    replaceBrowserPath('/install')
+    recoverActive = false
+    installState = { type: 'checking' }
+    void initializeApp()
+  }
+  function handleRecoverCancel(): void {
+    replaceBrowserPath('/')
+    recoverActive = false
+    installState = { type: 'checking' }
+    void initializeApp()
+  }
+  function handleForgotPassword(): void {
+    // 忘记密码是登录态的子流程，按模态语义处理：不改 URL，避免 pushState 制造一个没有
+    // popstate 监听的历史项（后退键会让 URL 与视图错位）。直达 /recover 仍由 onMount 处理。
+    loginModalOpen = false
+    recoverActive = true
+  }
 
   onMount(() => {
     preferredThemeMode = readPreferredThemeMode()
@@ -1082,6 +1108,11 @@
       mediaQuery.addEventListener('change', handleSystemThemeChange)
     }
 
+    if (typeof window !== 'undefined' && isRecoverPath(window.location.pathname)) {
+      recoverActive = true
+      booting = false
+      return
+    }
     void initializeApp()
     scheduleBookmarkIconCachePrune()
   })
@@ -1097,7 +1128,13 @@
 
 <svelte:window on:keydown={handleGlobalKeyDown} />
 
-{#if installView}
+{#if recoverActive}
+  <Recover
+    onRecovered={handleRecovered}
+    onGoInstall={handleGoInstall}
+    onCancel={handleRecoverCancel}
+  />
+{:else if installView}
   <Install
     mode={installView.mode}
     missingBindings={installView.missingBindings}
@@ -1276,6 +1313,7 @@
         error={$authStore.error ?? ''}
         onSubmit={handleLogin}
         onCancel={handleCloseLogin}
+        onForgotPassword={handleForgotPassword}
       />
     {/if}
 

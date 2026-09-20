@@ -52,11 +52,11 @@
 - 未安装实例：`/recover` 在站点尚未安装（无管理员凭据、无安装标记）时不执行恢复，引导到 `/install`；避免绕过安装 claim 事务写出一套凭据。
 - 行为（全部成功时）：
   1. 写入 `admin_password`（新哈希）；`admin_username` **不改**（D-2）；
-  2. 同步刷新 bootstrap 标记 `admin_bootstrap_password` 为同一新哈希（`admin_bootstrap_username` 保持原值），否则下次带 `INIT_ADMIN_*` 的部署可能因 `ensureAdminBootstrap` 的 `initCredentialsChanged` 检测触发回滚；
+  2. **不写 `admin_bootstrap_password`**，保持它作为 `INIT_ADMIN_*` 最近一次应用值的快照；如果把它改成新哈希，而 `INIT_ADMIN_PASSWORD` 未变，下一次非 web-install 实例登录会被 `ensureAdminBootstrap` 判定为初始化凭据变化并回滚本次恢复；
   3. 轮换 JWT secret（`rotateJwtSecret`），作废全部会话；
   4. 清除该来源的恢复失败限流计数（恢复者刚验证过部署者凭证，不应再被限流拦住）；
   5. 返回 `LoginResp`（用现有 `admin_username` 登录），前端直接进入登录态。
-- 原子性：两个密码键（`admin_password` / `admin_bootstrap_password`）同一 D1 batch 写入。
+- 原子性：恢复只更新 `admin_password` 一个密码键；用户名键和 bootstrap 快照均不改。
 - 不允许通过恢复端点修改用户名或除密码以外的任何数据；不触碰 `data_version`（凭据不属于公开数据）。
 
 ### F-2 恢复页面 `/recover`（前端）
@@ -91,7 +91,7 @@
 - 跨域请求：403，与 `/install` 一致。
 - 密码校验：长度 8–12 且至少两类字符；不满足（过短、过长、单一字符类）返回 HTTP 200 + `code=BAD_REQUEST`，不产生任何写入。请求体若携带 username 字段被忽略，不改 `admin_username`。
 - 未配置 `SETUP_TOKEN` 的实例：一律 401（响应不区分「未配置」与「错误」）。
-- 恢复后再次用新凭据登录正常；`admin_bootstrap_*` 已同步，后续带未变化 `INIT_ADMIN_*` 的重新部署**不会**把凭据改回旧值。
+- 恢复后再次用新凭据登录正常；`admin_username` 不变；`admin_bootstrap_password` 保持原快照，后续带未变化 `INIT_ADMIN_*` 的登录**不会**把恢复后的密码改回旧值。
 - 已安装实例上 `/install` 行为不变（仍拒绝 `already installed`）。
 
 **前端**
@@ -113,7 +113,7 @@
 ## 5. 风险与边界
 
 - **R1 恢复端点成为绕过登录的攻击面**：SETUP_TOKEN 常量时间比较 + D1 限流 + 同源校验三重复用；限流阈值与 install 对齐；响应不泄露 token 配置状态。残余风险：SETUP_TOKEN 与登录密码同为长期凭证，泄露面叠加——文档需写明「SETUP_TOKEN 视同管理员级凭证，妥善保管」。
-- **R2 `admin_bootstrap_*` 不同步导致凭据被回滚**：F-1 第 2 步是硬需求，不是可选优化；实现时必须覆盖，并在验收中锁定。
+- **R2 错误同步 bootstrap 快照会导致凭据回滚**：F-1 第 2 步必须保持 `admin_bootstrap_password` 不变；它记录最近一次 `INIT_ADMIN_*` 应用值，不是手工改密后的镜像。实现已用 smoke 场景验证：写入新 bootstrap 哈希会使未变的 INIT 密码校验失败，下一次登录回滚。
 - **R3 与 `/install` 限流 key 共用导致互相影响**：安装与恢复共用计数时，安装失败可能锁死恢复（或反之）。倾向独立 key；实现时定，文档写清。
 - **R4 前端路由 `/recover` 与 SPA 路由/Service Worker 缓存交互**：按 `/admin`、`/install` 的既有页面路由先例接入，避免新增特殊分支。
 - **R5 旧会话作废的 15 秒撤销窗口**：`rotateJwtSecret` 是即时全局失效（不依赖 KV 撤销名单），不等同于 logout 的 15 秒窗口；验收按「旧 token 401」断言，不引入对撤销名单的依赖。

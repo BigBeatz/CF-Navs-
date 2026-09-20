@@ -20,6 +20,9 @@
   --radius-xl: 18px;
   --radius-pill: 999px;
 
+  /* 焦点环颜色：浅色保持原蓝值（不改浅色观感），深色随青色强调色，避免蓝环压在青主题上。 */
+  --focus-ring: rgba(37, 99, 235, 0.12);
+
   /* 动效只保留两档。61 处声明里 0.18s 出现最多，0.15s 次之；
      其余 0.16s / 150ms / 180ms / 0.2s 都是同一意图的不同写法。 */
   --transition-fast: 0.15s ease;
@@ -49,6 +52,7 @@
 
 :root[data-theme='dark'] {
   color-scheme: dark;
+  --focus-ring: rgba(125, 211, 252, 0.35);
 }
 
 html,

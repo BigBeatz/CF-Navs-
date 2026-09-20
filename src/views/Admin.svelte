@@ -119,6 +119,7 @@
   <meta name="description" content="CF-Navs 管理后台 MVP" />
 </svelte:head>
 
+<a class="admin-skip-link" href="#admin-main">跳到主内容</a>
 <div class="admin-page">
   <AdminPageHeader
     {isAuthenticated}
@@ -194,6 +195,28 @@
 {/if}
 
 <style>
+  .admin-skip-link {
+    position: fixed;
+    top: 8px;
+    left: 8px;
+    z-index: 1000;
+    padding: 8px 14px;
+    border-radius: 10px;
+    background: var(--admin-accent, #2563eb);
+    color: var(--admin-accent-ink, #ffffff);
+    font-size: 13px;
+    font-weight: 600;
+    text-decoration: none;
+    transform: translateY(-150%);
+    transition: transform var(--transition-fast);
+  }
+
+  .admin-skip-link:focus {
+    transform: translateY(0);
+    outline: 2px solid var(--admin-accent-strong, #1e40af);
+    outline-offset: 2px;
+  }
+
   :global(body) {
     margin: 0;
     background: #f8fafc;
@@ -275,7 +298,7 @@
     --admin-subtle: #94a3b8;
     --admin-surface: rgba(15, 23, 42, 0.78);
     --admin-surface-strong: rgba(15, 23, 42, 0.92);
-    --admin-border: rgba(148, 163, 184, 0.22);
+    --admin-border: rgba(148, 163, 184, 0.26);
     --admin-shadow: 0 22px 48px rgba(0, 0, 0, 0.26);
     --admin-control-bg: rgba(15, 23, 42, 0.72);
     --admin-control-hover-bg: rgba(30, 41, 59, 0.86);
@@ -292,8 +315,8 @@
     --admin-accent-strong: #bae6fd;
     --admin-divider: rgba(148, 163, 184, 0.2);
     --admin-sticky-bg: rgba(15, 23, 42, 0.92);
-    --admin-card-bg: rgba(15, 23, 42, 0.6);
-    --admin-card-border: rgba(148, 163, 184, 0.2);
+    --admin-card-bg: #141f33;
+    --admin-card-border: rgba(148, 163, 184, 0.26);
     --admin-card-hover-border: rgba(148, 163, 184, 0.38);
     --admin-badge-bg: rgba(148, 163, 184, 0.16);
     --admin-badge-text: #94a3b8;

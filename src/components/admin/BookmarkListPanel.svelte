@@ -235,7 +235,7 @@
     <div class="admin-list-panel-header">
       <div>
         <p class="admin-panel-eyebrow">书签</p>
-        <div class="admin-title-row"><h2>书签列表</h2><div class="admin-bookmark-search-bar"><input type="text" data-testid="admin-bookmark-search" placeholder="搜索标题、链接或分类…" value={search} on:input={handleSearchInput} /></div></div>
+        <div class="admin-title-row"><h2>书签列表</h2><div class="admin-bookmark-search-bar"><input type="text" data-testid="admin-bookmark-search" aria-label="搜索书签" placeholder="搜索标题、链接或分类…" value={search} on:input={handleSearchInput} /></div></div>
       </div>
       <div class="admin-header-actions-row">
         <button
@@ -595,7 +595,7 @@
   .admin-bookmark-search-bar input:focus-visible {
     outline: none;
     border-color: var(--admin-accent);
-    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+    box-shadow: 0 0 0 3px var(--focus-ring);
   }
 
   .admin-bookmark-search-bar input::placeholder {

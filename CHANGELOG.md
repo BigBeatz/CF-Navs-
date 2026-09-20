@@ -27,6 +27,20 @@
 - 焦点：10 个组件的 `input/textarea:focus{outline:none; ring}` 与 settingsSections.css 两处多选择器规则统一为 `:focus-visible`（BookmarkBaseFields 的 input/select/textarea 一并收敛），保留 3px 可见焦点替代环。
 - 验证：`npm run type-check` 315 files 0 errors / 0 warnings；`npm test` 128 files / 948 tests 全通过；`npm run build` 成功；`git diff --check` 干净。独立 Reviewer 两轮（首轮 CHANGES_REQUIRED 暗色主按钮回归 → 修复 → PASS）。L2 浏览器回归与 P1 布局整改未在本提交范围。
 
+### 后台管理界面审计整改 P1/P2（设置布局 / 暗色层级 / 无障碍）
+
+- 承接 `docs/plans/ADMIN_UI_REDESIGN_DEVELOPMENT.md` 的 P1/P2 批次（P0 已在上一节交付）。
+- 站点设置信息架构拆分：二级菜单 6→7，新增「高级与视觉」，把 `AdvancedSettingsSection`（背景 / 尺寸 / 卡片表面 / 分类标题视觉）从「外观与卡片」移出，后者只留配色方案与卡片风格。外观分区展开高级后此前编辑区内滚约 1149px（约 3.5 屏），拆分后单分区编辑区内滚为 0。
+- 设置页去三层嵌套滚动：`.settings-panel` 移除 `height: clamp(...)` 锁高与 `overflow: hidden`，编辑区不再自成滚动，交由外层 `.admin-content` 单一滚动；`.settings-preview-column` 改 `position: sticky` 桌面粘性跟随；`@media (max-width:1320px)` 收起为单列并让预览回落静态流。
+- 布局与导航小栅格：`.navigation-grid > .field`（显示位置）占整行，两个条件开关成对落在下一行，修复「分类分行显示」开关此前单独占一行、右侧留白的孤立感。
+- 自定义样式/脚本：三个 `textarea` 标签补 `HTML` / `CSS` / `JS` 单色 monospace 语言徽标。
+- 暗色层级按「表面色差优先于阴影」提亮：`--admin-card-bg` 由半透明 `rgba(15,23,42,0.6)` 改不透明 `#141f33`（与页底 `#08111f` 拉开亮度差）、`--admin-border` 0.22→0.26、`--admin-card-border` 0.2→0.26；正文 `#e5eefb` on `#141f33` ≈ 14:1。浅色 token 不动。
+- 动效收敛：移除 `AdminPageHeader` 图标按钮与设置二级菜单 hover 的 `translateY` 抬升，仅保留主保存按钮单点强调。
+- 无障碍：后台新增「跳到主内容」skip-link（标准 `:focus` 显现，`href="#admin-main"`），`.admin-content` 补 `id="admin-main"` + `tabindex="-1"`；分类 / 书签搜索框补 `aria-label`。
+- 焦点环 token 化：`src/app.css` 新增 `--focus-ring`（浅色保持原 `rgba(37,99,235,0.12)` 零回归，暗色改青色 `rgba(125,211,252,0.35)` 呼应强调色），11 处焦点环字面量收敛到该 token；顺带把 `LoginModal` 的 `input:focus` 补成 `:focus-visible`（P0 因该文件被并行任务占用而遗留，现已释放）。
+- 验证：`npm run type-check` 316 files 0/0；`npm test` 128 files / 948 tests 全通过（含随 IA 拆分与单滚动重构同步更新的 `adminSettingsLayout`/`adminSettingsBehavior`/`designTokens`）；`npm run build` 成功；`git diff --check` 干净。本地 `wrangler dev` 真实浏览器（1440 视窗）实测：二级菜单 7 项 / 7 列、预览列 `position: sticky`、面板 `overflow: visible`、四个设置分区编辑区内滚均为 0、语言徽标渲染、暗色卡片 `#141f33` 对页底层差明显、skip-link 接线正确。独立 `workflow-reviewer` 两轮（首轮 CHANGES_REQUIRED：一个菜单用例仍写「六个分区」→ 补「高级与视觉」并改名 → 复检 PASS）。未改动任何并行任务文件（仅 `src/` 与 `tests/`）。
+
+
 ## v0.6.0 — 2026-09-20
 
 功能版本。新增首页离屏搜索按钮与居中 Spotlight 命令面板（REQ-01）：`Ctrl/Cmd+K`、`/` 或浮动按钮唤起，即时检索、键盘导航、主题自适应，高亮项自动滚入可视区。同步收敛后台增删改编排（PROB-24）、后台公开对象图标恢复共享缓存（PROB-35），关闭 PROB-36（首页搜索防抖复核为测量伪影 + `perf:audit` 门禁时序加固）与 PROB-19v（登出撤销的会话存储失败分支），补齐详情卡片列宽缺失回退到 160px（refs #22）。部署来源为 `develop`。

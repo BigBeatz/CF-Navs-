@@ -592,7 +592,7 @@
     transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
   }
 
-  .admin-bookmark-search-bar input:focus {
+  .admin-bookmark-search-bar input:focus-visible {
     outline: none;
     border-color: var(--admin-accent);
     box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);

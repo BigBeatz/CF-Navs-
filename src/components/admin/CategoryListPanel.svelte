@@ -382,7 +382,7 @@
     font: inherit;
   }
 
-  .admin-bookmark-search-bar input:focus {
+  .admin-bookmark-search-bar input:focus-visible {
     outline: 2px solid color-mix(in srgb, var(--admin-accent) 32%, transparent);
     outline-offset: 1px;
   }

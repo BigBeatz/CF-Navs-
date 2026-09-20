@@ -227,6 +227,7 @@
     --admin-nav-badge-bg: rgba(148, 163, 184, 0.12);
     --admin-nav-active-badge-bg: rgba(59, 130, 246, 0.15);
     --admin-accent: #2563eb;
+    --admin-accent-ink: #ffffff;
     --admin-accent-strong: #1e40af;
     --admin-divider: #e2e8f0;
     --admin-sticky-bg: rgba(255, 255, 255, 0.98);
@@ -234,17 +235,17 @@
     --admin-card-border: #e2e8f0;
     --admin-card-hover-border: #cbd5e1;
     --admin-badge-bg: #f1f5f9;
-    --admin-badge-text: #64748b;
+    --admin-badge-text: #475569;
     --admin-icon-badge-bg: #eff6ff;
     --admin-input-bg: #ffffff;
     --admin-input-border: #cbd5e1;
     --admin-input-hover-border: #94a3b8;
-    --admin-input-placeholder: #94a3b8;
+    --admin-input-placeholder: #64748b;
     --admin-th-bg: #ffffff;
     --admin-sort-highlight-bg: #f8fbff;
     --admin-sort-highlight-border: #bfdbfe;
     --admin-link: #2563eb;
-    --admin-danger: #dc2626;
+    --admin-danger: #b91c1c;
     --admin-danger-bg: #fef2f2;
     --admin-danger-border: #fecaca;
     --admin-danger-hover-bg: #fee2e2;
@@ -287,6 +288,7 @@
     --admin-nav-badge-bg: rgba(148, 163, 184, 0.16);
     --admin-nav-active-badge-bg: rgba(125, 211, 252, 0.18);
     --admin-accent: #7dd3fc;
+    --admin-accent-ink: #0f172a;
     --admin-accent-strong: #bae6fd;
     --admin-divider: rgba(148, 163, 184, 0.2);
     --admin-sticky-bg: rgba(15, 23, 42, 0.92);
@@ -299,7 +301,7 @@
     --admin-input-bg: rgba(15, 23, 42, 0.72);
     --admin-input-border: rgba(148, 163, 184, 0.32);
     --admin-input-hover-border: rgba(148, 163, 184, 0.5);
-    --admin-input-placeholder: #64748b;
+    --admin-input-placeholder: #94a3b8;
     --admin-th-bg: #0f1c30;
     --admin-sort-highlight-bg: rgba(125, 211, 252, 0.08);
     --admin-sort-highlight-border: rgba(125, 211, 252, 0.32);

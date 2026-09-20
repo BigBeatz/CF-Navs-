@@ -17,6 +17,15 @@
 - 文档：`docs/reference/API_CONTRACT.md` 补 `POST /api/recover` 契约；`docs/guides/DEPLOYMENT.md`、`docs/guides/TROUBLESHOOTING.md` 恢复路径重排为三级（账号安全改密 → `/recover` → `INIT_ADMIN_*`/`RESET_ADMIN_CREDENTIALS` 重部署兜底）。
 - 验证：L0 `type-check` 315 files 0/0、`npm test` 127 files / 943 tests、build 成功；新增 `recover.test.ts` 13/13、`recoverView.test.ts` 6/6；L1 `npm run smoke` 83/83（含恢复成功、错误/缺令牌 401、弱密码 1002、新密码可登录、旧密码被拒）。`/recover` 页面真实浏览器 L2 待 `develop` 部署后复核（本地 `browser.open` 连接层 `ERR_FAILED`，页面 HTTP 200、worker 日志正常），见 `docs/BACKLOG.md` §3。Issue #24 在实现进默认分支并部署验证前保持 Open。
 
+### 后台管理界面审计整改 P0（对比度 / 焦点环 / 主题基建）
+
+- 由 web-design-guidelines / frontend-design / brand-guidelines / extract-design-system / theme-factory 五个前端技能驱动的只读审计，决策记录 `docs/plans/ADMIN_UI_REDESIGN_DEVELOPMENT.md`；本版本落地其 P0 批次。P1（站点设置布局拆分、单滚动、预览联动）与 L2/L3 浏览器验证欠账见该文档。
+- 对比度按 WCAG AA 复算收敛：浅色占位符 `#94a3b8→#64748b`（2.56→4.76）、暗色占位符 `#64748b→#94a3b8`（3.59→6.66）、后台徽标文字 `#64748b→#475569`（4.34→6.92）、浅色危险红 `#dc2626→#b91c1c`（4.41→5.91）。
+- 主题基建：`src/app.css` 补 `color-scheme: light` 与 `:root[data-theme='dark']{color-scheme:dark}`；`index.html` 内联脚本让 `theme-color` 随 `data-theme` 动态（暗 `#08111f` / 浅 `#f8fafc`，MutationObserver 监听）。
+- 消灭 token 漂移：`adminListPanels.css` 主按钮硬编码 `#2563eb/#fff` 收敛到 `var(--admin-accent)` + 新增 `--admin-accent-ink`（浅 `#ffffff` / 暗 `#0f172a`）。独立复核发现并修复 token 化引入的暗色主按钮对比度回归（白字 on `#7dd3fc` 仅 1.67:1），修复后浅 5.17 / 暗 10.71。
+- 焦点：10 个组件的 `input/textarea:focus{outline:none; ring}` 与 settingsSections.css 两处多选择器规则统一为 `:focus-visible`（BookmarkBaseFields 的 input/select/textarea 一并收敛），保留 3px 可见焦点替代环。
+- 验证：`npm run type-check` 315 files 0 errors / 0 warnings；`npm test` 128 files / 948 tests 全通过；`npm run build` 成功；`git diff --check` 干净。独立 Reviewer 两轮（首轮 CHANGES_REQUIRED 暗色主按钮回归 → 修复 → PASS）。L2 浏览器回归与 P1 布局整改未在本提交范围。
+
 ## v0.6.0 — 2026-09-20
 
 功能版本。新增首页离屏搜索按钮与居中 Spotlight 命令面板（REQ-01）：`Ctrl/Cmd+K`、`/` 或浮动按钮唤起，即时检索、键盘导航、主题自适应，高亮项自动滚入可视区。同步收敛后台增删改编排（PROB-24）、后台公开对象图标恢复共享缓存（PROB-35），关闭 PROB-36（首页搜索防抖复核为测量伪影 + `perf:audit` 门禁时序加固）与 PROB-19v（登出撤销的会话存储失败分支），补齐详情卡片列宽缺失回退到 160px（refs #22）。部署来源为 `develop`。

@@ -149,7 +149,7 @@
     font-family: inherit;
   }
 
-  .color-picker-row input[type='text']:focus {
+  .color-picker-row input[type='text']:focus-visible {
     outline: none;
     border-color: #2563eb;
     box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);

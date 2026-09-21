@@ -373,7 +373,9 @@ docs/
 
 ## 📄 License
 
-MIT License - 详见 [LICENSE](../../LICENSE) 文件
+Apache License 2.0 - 详见 [LICENSE](../../LICENSE) 和 [NOTICE](../../NOTICE) 文件。
+
+发布基于 CF-Navs 的修改版本时，请保留许可证、归属和修改说明，并在项目文档中明确注明上游来源。
 
 ## 🙏 致谢
 

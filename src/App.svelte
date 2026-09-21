@@ -80,6 +80,7 @@
   import { getNextThemePreference, resolveAppThemeState } from './lib/appThemeState'
   import type { ImportSource } from './lib/importData'
   import { pruneBookmarkIconCacheStorageBackedByLocalStorage } from './lib/localBookmarkIconCache'
+  import { installPublicDataFocusRefresh } from './lib/publicDataFocusRefresh'
   import { adminStore, authStore, configStore, isAuthenticated, publicStore } from './lib/stores'
   import { readPreferredThemeMode, writePreferredThemeMode } from './lib/themePreference'
   import {
@@ -283,6 +284,7 @@
   let systemPrefersDark = false
   let mediaQuery: MediaQueryList | null = null
   let handleSystemThemeChange: ((event: MediaQueryListEvent) => void) | null = null
+  let stopPublicDataFocusRefresh: (() => void) | null = null
 
   $: resolvedThemeState = resolveAppThemeState({
     preferredThemeMode,
@@ -1115,6 +1117,8 @@
     }
     void initializeApp()
     scheduleBookmarkIconCachePrune()
+    // 切回已打开的标签页时按版本门控刷新公开数据（Issue #25 跨标签页设置同步）。
+    stopPublicDataFocusRefresh = installPublicDataFocusRefresh(() => refreshPublicData())
   })
 
   onDestroy(() => {
@@ -1123,6 +1127,7 @@
     }
     // 不 revoke 的话每次重建都会漏一个 blob URL。
     customScriptController?.destroy()
+    stopPublicDataFocusRefresh?.()
   })
 </script>
 

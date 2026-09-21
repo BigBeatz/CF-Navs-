@@ -16,6 +16,7 @@
 - 根因：`SearchBox.svelte` 只在“当前选中名不在引擎列表里”时才跟随 `search_engine.current`。Google→Bing 切换后 Google 仍是合法引擎，常驻的搜索框实例（设置面板实时预览、同会话首页）的选中引擎永远停在 Google，导致站点设置里切换默认引擎界面无效。
 - 修复：跟踪默认引擎变化，默认引擎变更时清除用户手动选择标记并立即跟随新默认值；手动点选只在默认引擎不变时保持；选中项被移出列表后回落到当前默认引擎。
 - 验证：新增 `tests/unit/searchBoxEngineSync.test.ts` 4 条回归（默认跟随、手动保持、默认覆盖、列表移除回落），反向对照旧逻辑精确失败。
+- 修复后台默认搜索引擎下拉的真实交互：原生 select 先派发 `input` 再派发 `change`，而 Svelte `bind:value` 只在 `change` 提交；fieldset 的 `on:input` 会先克隆表单，把用户刚选中的选项在 `change` 到达前重置回旧值——表现为「选了没选中、保存按钮仍禁用」。修复：select 在自身 `on:input`（目标阶段，早于 fieldset 冒泡）立即提交 `current`，选项改用稳定 `index` key。新增 `tests/unit/searchEngineSettingsSelect.test.ts`（input 阶段即提交 + 完整序列保持），修复前精确失败。
 - 补充（跨标签页同步）：后台保存设置后，其他已打开标签页里的首页此前要手动刷新才能更新（全站通病，无跨标签页同步机制）。新增 `installPublicDataFocusRefresh`：窗口重新获得焦点或页面恢复可见时，按数据版本门控刷新公开数据（数据未变化不发全量请求），防抖合并；切回已打开的标签页即可看到新默认引擎。新增 `tests/unit/publicDataFocusRefresh.test.ts` 4 条防抖/可见性/卸载回归。
 
 ## v0.7.1 — 2026-09-21

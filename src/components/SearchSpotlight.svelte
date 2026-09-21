@@ -10,6 +10,7 @@
   import { setPageScrollLocked } from '../lib/pageScrollLock'
   import { publicStore } from '../lib/stores'
   import { api } from '../lib/api'
+  import SpotlightBookmarkIcon from './SpotlightBookmarkIcon.svelte'
 
   export let open = false
   export let bookmarks: PublicBookmark[] = []
@@ -157,9 +158,6 @@
     option?.scrollIntoView({ block: 'nearest' })
   }
 
-  function resultGlyph(title: string): string {
-    return [...title.trim()][0] ?? '·'
-  }
 </script>
 
 {#if open}
@@ -212,7 +210,7 @@
             on:click={() => openBookmarkFromSearch(bookmark)}
             on:mouseenter={() => (activeIndex = index)}
           >
-            <span class="spotlight-option-glyph" aria-hidden="true">{resultGlyph(bookmark.title)}</span>
+            <SpotlightBookmarkIcon {bookmark} />
             <span class="spotlight-option-main">
               <span class="spotlight-option-title">{bookmark.title}</span>
               <span class="spotlight-option-sub">{categoryTitle(bookmark.category_id) || bookmark.url}</span>
@@ -271,7 +269,6 @@
     --spotlight-placeholder: #94a3b8;
     --spotlight-active-bg: rgba(37, 99, 235, 0.12);
     --spotlight-active-outline: rgba(37, 99, 235, 0.42);
-    --spotlight-glyph-bg: rgba(15, 23, 42, 0.06);
     --spotlight-scope-bg: rgba(37, 99, 235, 0.1);
     --spotlight-scope-border: rgba(37, 99, 235, 0.28);
     --spotlight-shadow: 0 28px 70px rgba(15, 23, 42, 0.28);
@@ -298,7 +295,6 @@
     --spotlight-placeholder: #7d8ca6;
     --spotlight-active-bg: rgba(37, 99, 235, 0.28);
     --spotlight-active-outline: rgba(96, 165, 250, 0.55);
-    --spotlight-glyph-bg: rgba(255, 255, 255, 0.1);
     --spotlight-scope-bg: rgba(96, 165, 250, 0.16);
     --spotlight-scope-border: rgba(96, 165, 250, 0.35);
     --spotlight-shadow: 0 28px 70px rgba(15, 23, 42, 0.5);
@@ -367,18 +363,6 @@
     outline: 1px solid var(--spotlight-active-outline);
   }
 
-  .spotlight-option-glyph {
-    width: 30px;
-    height: 30px;
-    flex-shrink: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: var(--radius-sm);
-    background: var(--spotlight-glyph-bg);
-    font-size: 14px;
-    text-transform: uppercase;
-  }
 
   .spotlight-option-main {
     flex: 1;

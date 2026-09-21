@@ -8,7 +8,7 @@
     <img src="https://img.shields.io/badge/Cloudflare-Workers-F38020?logo=cloudflare&logoColor=white" alt="Cloudflare Workers">
     <img src="https://img.shields.io/badge/Svelte-5-FF3E00?logo=svelte&logoColor=white" alt="Svelte 5">
     <img src="https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white" alt="TypeScript 5">
-    <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-2563EB" alt="MIT License"></a>
+    <a href="LICENSE"><img src="https://img.shields.io/badge/License-Apache--2.0-2563EB" alt="Apache License 2.0"></a>
   </p>
 
   <p>
@@ -311,7 +311,17 @@ CF-Navs/
 
 ## 许可证
 
-本项目采用 [MIT License](LICENSE)。
+本项目采用 [Apache License 2.0](LICENSE)，项目归属信息见 [`NOTICE`](NOTICE)。
+
+### Fork 与归属说明
+
+如果你 Fork、重新分发或发布基于 CF-Navs 的修改版本，请：
+
+- 保留 `LICENSE`、`NOTICE` 以及源文件中已有的版权、许可和归属声明。
+- 按 Apache License 2.0 的要求，在修改过的文件中保留清晰的修改说明。
+- 在 README 或产品文档中明确说明项目基于 CF-Navs，并链接上游仓库；不要暗示修改版本由原项目作者官方发布或认可。
+
+以上说明用于帮助用户识别衍生版本；具体许可权利和义务以 [LICENSE](LICENSE) 为准。
 
 <!-- 爱发电赞助区 (折叠卡片) -->
 <hr>
